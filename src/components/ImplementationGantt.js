@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Card, CardContent, CardHeader,
   Typography, Button, Slider, 
@@ -32,7 +32,6 @@ const ImplementationGantt = () => {
     moduleCheckIns: 0,
   });
   const [selectedProduct, setSelectedProduct] = useState('ClearRecruit');
-  const [timeline, setTimeline] = useState([]);
 
   // Define product mixes and their modules
   const productMixes = {
@@ -104,8 +103,7 @@ const ImplementationGantt = () => {
   }, [employeeCount]);
 
   // Calculate timeline based on employee count, tier, and product mix
-  useEffect(() => {
-    // Scale factor based on employee count (more employees = more complexity)
+  const timeline = useMemo(() => {
     const scaleFactor = employeeCount <= 200 ? 1 : 
                         employeeCount <= 1000 ? 1.5 : 
                         2;
@@ -221,11 +219,24 @@ const ImplementationGantt = () => {
       color: colors.secondaryAlt // purple
     });
     
-    setTimeline(tasks);
-  }, [employeeCount, selectedProduct, tierInfo]);
+    return tasks;
+  }, [
+    employeeCount, 
+    selectedProduct, 
+    baseDurations.execution.moduleDuration, 
+    baseDurations.launch.goLive, 
+    colors.primaryDark, 
+    colors.primaryLight, 
+    colors.primaryLighter, 
+    colors.secondary, 
+    colors.secondaryAlt, 
+    colors.secondaryAltLight, 
+    colors.secondaryDark, 
+    productMixes
+  ]);
 
   // Function to handle PDF export
-  const handleExportPDF = () => {
+  const handleExportPDF = useCallback(() => {
     const element = document.getElementById('gantt-chart-container');
     const opt = {
       margin: 1,
@@ -236,11 +247,13 @@ const ImplementationGantt = () => {
     };
     
     html2pdf().set(opt).from(element).save();
-  };
+  }, []);
 
   // Calculate total implementation time
-  const totalWeeks = timeline.length > 0 ? 
-    Math.ceil(timeline[timeline.length - 1].start + timeline[timeline.length - 1].duration) : 0;
+  const totalWeeks = useMemo(() => {
+    return timeline.length > 0 ? 
+      Math.ceil(timeline[timeline.length - 1].start + timeline[timeline.length - 1].duration) : 0;
+  }, [timeline]);
   
   // For display purposes
   const months = Math.floor(totalWeeks / 4);

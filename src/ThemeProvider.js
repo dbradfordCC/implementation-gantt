@@ -1,6 +1,7 @@
 import { blue, pink, grey } from '@mui/material/colors'
 import CssBaseline from '@mui/material/CssBaseline'
 import { createTheme, ThemeProvider as MuiThemeProvider } from '@mui/material/styles'
+import React from 'react';
 
 const theme = createTheme({
   palette: {
