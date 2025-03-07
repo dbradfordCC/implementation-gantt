@@ -25,6 +25,7 @@ const ImplementationGantt = () => {
   };
   
   // State variables
+  const [customerName, setCustomerName] = useState('');
   const [employeeCount, setEmployeeCount] = useState(200);
   const [tierInfo, setTierInfo] = useState({
     tier: 'Small Biz',
@@ -45,9 +46,9 @@ const ImplementationGantt = () => {
       modules: ['Recruiting', 'Onboarding', 'LMS'],
       moduleCount: 3
     },
-    TotalTalent: {
+          TotalTalent: {
       name: 'TotalTalent',
-      modules: ['Recruiting', 'Onboarding', 'LMS', 'Performance/Goals/Engagement'],
+      modules: ['Recruiting', 'Onboarding', 'LMS', 'Performance & Goals'],
       moduleCount: 4
     },
     ClearLearn: {
@@ -57,7 +58,7 @@ const ImplementationGantt = () => {
     },
     ClearGrow: {
       name: 'ClearGrow',
-      modules: ['LMS', 'Performance/Goals/Engagement'],
+      modules: ['LMS', 'Performance & Goals'],
       moduleCount: 2
     }
   };
@@ -237,17 +238,36 @@ const ImplementationGantt = () => {
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
-    const element = document.getElementById('gantt-chart-container');
+    // Hide elements we don't want in the PDF
+    const customerNameField = document.getElementById('customer-name-field');
+    const exportButton = document.getElementById('export-pdf-button');
+    const ganttHeader = document.getElementById('gantt-header');
+    
+    if (customerNameField) customerNameField.style.display = 'none';
+    if (exportButton) exportButton.style.display = 'none';
+    if (ganttHeader) ganttHeader.style.display = 'none';
+    
+    const element = document.getElementById('gantt-chart-full-container');
     const opt = {
-      margin: 1,
-      filename: 'implementation-gantt.pdf',
+      margin: 0.5,
+      filename: `${customerName ? customerName + ' - ' : ''}implementation-gantt.pdf`,
       image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+      html2canvas: { 
+        scale: 2,
+        useCORS: true, // Enable CORS for the logo image
+        logging: false
+      },
+      jsPDF: { unit: 'in', format: 'ledger', orientation: 'landscape' },
+      pagebreak: { avoid: '.avoid-break' }
     };
     
-    html2pdf().set(opt).from(element).save();
-  }, []);
+    html2pdf().set(opt).from(element).save().then(() => {
+      // Restore visibility after PDF is generated
+      if (customerNameField) customerNameField.style.display = 'block';
+      if (exportButton) exportButton.style.display = 'flex';
+      if (ganttHeader) ganttHeader.style.display = 'block';
+    });
+  }, [customerName]);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
@@ -260,15 +280,25 @@ const ImplementationGantt = () => {
   const remainingWeeks = totalWeeks % 4;
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333' }}>
+    <Box id="gantt-chart-full-container" sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333', width: '100%' }}>
+      {/* Header section with logo only */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', mb: 3 }}>
+        <img 
+          src="https://cc-client-cdn.clearcompany.com/7d1a23bb-d726-1404-8eb3-460472842d52/custom-files/409caa49-4479-275f-a9ce-2bb70eb9eb4d/ClearCompany_Main_Resized.png" 
+          alt="ClearCompany Logo" 
+          style={{ maxHeight: '70px', width: 'auto' }}
+        />
+      </Box>
+      
       <Card>
         <CardHeader 
           title={
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-                Implementation Project Configuration
+                {customerName ? `${customerName} - ` : ''}Implementation Project
               </Typography>
               <Button 
+                id="export-pdf-button"
                 variant="contained" 
                 startIcon={<Download size={16} />} 
                 onClick={handleExportPDF}
@@ -281,6 +311,19 @@ const ImplementationGantt = () => {
         />
         <CardContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {/* Customer Name input */}
+            <Box id="customer-name-field">
+              <Typography variant="subtitle1" gutterBottom>
+                Customer Name
+              </Typography>
+              <TextField
+                fullWidth
+                placeholder="Enter customer name"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+              />
+            </Box>
+            
             <Box>
               <Typography variant="subtitle1" gutterBottom>
                 Employee Count: {employeeCount}
@@ -401,11 +444,12 @@ const ImplementationGantt = () => {
         </CardContent>
       </Card>
       
-      <Card id="gantt-chart-container">
+      <Card id="gantt-chart-container" className="avoid-break">
         <CardHeader 
+          id="gantt-header"
           title={
             <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-              Implementation Gantt Chart
+              Gantt Chart Timeline
             </Typography>
           }
         />
@@ -424,7 +468,7 @@ const ImplementationGantt = () => {
                       sx={{ 
                         position: 'sticky', 
                         left: 0, 
-                        width: '200px', 
+                        width: '100%', 
                         fontWeight: 'bold', 
                         py: 1.5, 
                         px: 1, 
@@ -455,13 +499,24 @@ const ImplementationGantt = () => {
                             backgroundColor: 'white', 
                             zIndex: 10, 
                             px: 1,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
+                            fontSize: '0.85rem',
                             color: colors.dark
                           }}
                         >
-                          {task.name}
+                                                      <Typography 
+                            sx={{ 
+                              fontSize: '0.85rem',
+                              lineHeight: 1.2,
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              wordBreak: 'break-word',
+                              width: '190px'
+                            }}
+                          >
+                            {task.name}
+                          </Typography>
                         </Box>
                         <Box sx={{ flexGrow: 1, position: 'relative', height: '32px' }}>
                           <Box 
