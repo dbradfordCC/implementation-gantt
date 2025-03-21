@@ -472,11 +472,11 @@ const ImplementationGantt = () => {
       }
       
       // First, temporarily adjust any scaling to ensure full content capture
-      const allTaskBars = document.querySelectorAll('[data-task-bar="true"]');
+      const allTaskBars = document.querySelectorAll('[data-task-bar]');
       const totalDuration = Array.from(allTaskBars).reduce((max, el) => {
         const style = window.getComputedStyle(el);
-        const left = parseFloat(style.left);
-        const width = parseFloat(style.width);
+        const left = parseFloat(style.left || '0');
+        const width = parseFloat(style.width || '0');
         const end = left + width;
         return Math.max(max, end);
       }, 0);
@@ -832,6 +832,7 @@ const ImplementationGantt = () => {
                           </Box>
                           <Box sx={{ flexGrow: 1, position: 'relative', height: '32px' }}>
                             <Box 
+                              data-task-bar="true"
                               sx={{ 
                                 position: 'absolute', 
                                 borderRadius: '4px', 
@@ -839,7 +840,6 @@ const ImplementationGantt = () => {
                                 alignItems: 'center', 
                                 justifyContent: 'center', 
                                 fontSize: '0.875rem',
-                                data-task-bar="true"
                                 left: task.isSelfPaced ? 0 : `${task.start * 24}px`,
                                 width: barWidth,
                                 backgroundColor: backgroundColor,
