@@ -1,4 +1,20 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+// Effect to handle scaling the gantt chart to fit the container
+  useEffect(() => {
+    if (ganttContainerRef.current && ganttContentRef.current) {
+      const resizeObserver = new ResizeObserver(() => {
+        adjustGanttScale();
+      });
+      
+      resizeObserver.observe(ganttContainerRef.current);
+      
+      // Initial adjustment
+      adjustGanttScale();
+      
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, [adjustGanttScale]);import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Card, CardContent, CardHeader,
   Typography, Button, Slider, 
@@ -82,22 +98,33 @@ const ImplementationGantt = () => {
   const ganttContainerRef = useRef(null);
   const ganttContentRef = useRef(null);
   
-  // Effect to handle scaling the gantt chart to fit the container
+  // Add print-specific styles
   useEffect(() => {
-    if (ganttContainerRef.current && ganttContentRef.current) {
-      const resizeObserver = new ResizeObserver(() => {
-        adjustGanttScale();
-      });
-      
-      resizeObserver.observe(ganttContainerRef.current);
-      
-      // Initial adjustment
-      adjustGanttScale();
-      
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }
+    // Create a style element for print styles
+    const style = document.createElement('style');
+    style.textContent = `
+      @media print {
+        @page {
+          size: landscape;
+          margin: 0.5in;
+        }
+        body {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        #config-card {
+          page-break-after: always;
+        }
+        #gantt-chart-container {
+          page-break-before: always;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+    
+    return () => {
+      document.head.removeChild(style);
+    };
   }, []);
 
   // Calculate tier based on employee count
@@ -427,16 +454,15 @@ const ImplementationGantt = () => {
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
-    const element = document.getElementById('gantt-chart-container');
+    const element = document.body; // Capture the entire page for proper page breaks
     const opt = {
       margin: 0.5,
       filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
       jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-      // Ensure content fits on the page
-      hotfixes: ['px_scaling'],
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+      // Ensure content respects page breaks
+      pagebreak: { mode: ['css', 'legacy'], before: ['#gantt-chart-container'] }
     };
     
     html2pdf().set(opt).from(element).save();
@@ -483,20 +509,22 @@ const ImplementationGantt = () => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333' }}>
-      <Card>
+      {/* Logo centered at the top */}
+      <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: 2 }}>
+        <img 
+          src="https://cc-client-cdn.clearcompany.com/7d1a23bb-d726-1404-8eb3-460472842d52/custom-files/409caa49-4479-275f-a9ce-2bb70eb9eb4d/ClearCompany_Main_Resized.png" 
+          alt="ClearCompany Logo" 
+          style={{ height: '50px' }}
+        />
+      </Box>
+      
+      <Card id="config-card" sx={{ pageBreakAfter: 'always' }}>
         <CardHeader 
           title={
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <img 
-                  src="https://cc-client-cdn.clearcompany.com/7d1a23bb-d726-1404-8eb3-460472842d52/custom-files/409caa49-4479-275f-a9ce-2bb70eb9eb4d/ClearCompany_Main_Resized.png" 
-                  alt="ClearCompany Logo" 
-                  style={{ height: '40px' }}
-                />
-                <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-                  Implementation Project Configuration
-                </Typography>
-              </Box>
+              <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
+                Implementation Project Configuration
+              </Typography>
               <Button 
                 variant="contained" 
                 startIcon={<Download size={16} />} 
@@ -643,7 +671,7 @@ const ImplementationGantt = () => {
         </CardContent>
       </Card>
       
-      <Card id="gantt-chart-container">
+      <Card id="gantt-chart-container" sx={{ pageBreakBefore: 'always' }}>
         <CardHeader 
           title={
             <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
@@ -660,7 +688,10 @@ const ImplementationGantt = () => {
                 minWidth: '700px', 
                 transform: 'scale(1)',
                 transformOrigin: 'left top',
-                '@media print': { maxWidth: '100vw' } 
+                '@media print': { 
+                  maxWidth: '100vw',
+                  transform: 'scale(1)',
+                }
               }}
             >
               {/* Group by phase */}
@@ -673,30 +704,29 @@ const ImplementationGantt = () => {
                   <Box key={phase}>
                     <Box 
                       sx={{ 
-                        position: 'sticky', 
-                        left: 0, 
+                        position: 'relative', // Changed from sticky to allow full width background
                         width: '250px', // Increased from 200px to show full task names
                         fontWeight: 'bold', 
                         py: 1.5, 
                         px: 1, 
                         mb: 1, 
                         zIndex: 10,
-                        backgroundColor: colors.lightGray, 
+                        backgroundColor: 'transparent', // Make transparent so the background shows through
                         color: colors.dark
                       }}
                     >
                       {phase}
                     </Box>
                     
-                    {/* Phase header background that spans full width */}
+                    {/* Phase header background that spans full width - improved to be continuous */}
                     <Box 
                       sx={{ 
                         position: 'absolute',
-                        left: '250px', // Match width of task name column
+                        left: 0,
                         right: 0,
                         height: '48px', // Match height of phase header
                         backgroundColor: colors.lightGray,
-                        zIndex: 5,
+                        zIndex: 1, // Lower z-index so it stays behind task names but is visible
                         mt: -6 // Offset to align with header
                       }}
                     />
