@@ -1,10 +1,23 @@
-value={product} 
-                          control={<Radio />} 
-                          label={product} 
-                        />
-                      </Paper>
-                    </Grid>
-                  ))}
+<Grid item xs={6}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Package
+                </Typography>
+                <Typography variant="h6">
+                  {tierInfo.package}
+                </Typography>
+              </Grid>
+            </Grid>
+            
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Product Selection
+              </Typography>
+              <RadioGroup
+                value={selectedProduct}
+                onChange={(e) => setSelectedProduct(e.target.value)}
+              >
+                <Grid container spacing={1}>
+                  {renderProductOptions()}
                 </Grid>
               </RadioGroup>
             </Box>
@@ -14,21 +27,7 @@ value={product}
                 Selected Product Modules
               </Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
-                {productMixes[selectedProduct].modules.map(module => (
-                  <Box 
-                    key={module} 
-                    sx={{ 
-                      bgcolor: '#e3f2fd', 
-                      color: '#254677', 
-                      px: 2, 
-                      py: 0.5, 
-                      borderRadius: 10,
-                      fontSize: '0.875rem'
-                    }}
-                  >
-                    {module}
-                  </Box>
-                ))}
+                {renderSelectedModules()}
               </Box>
             </Box>
             
@@ -77,8 +76,9 @@ value={product}
                 }
               }}
             >
-              {/* Simplified rendering of phases using the helper function */}
-              {['Initiation & Planning', 'Execution', 'Launch'].map(phase => renderPhaseTasks(phase))}
+              {renderPhase('Initiation & Planning')}
+              {renderPhase('Execution')}
+              {renderPhase('Launch')}
             </Box>
           </Box>
         </CardContent>
