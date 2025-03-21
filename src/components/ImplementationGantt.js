@@ -1,19 +1,4 @@
-// Function to handle PDF export
-  const handleExportPDF = useCallback(() => {
-    const element = document.getElementById('gantt-chart-container');
-    const opt = {
-      margin: 0.5,
-      filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-      // Ensure content fits on the page
-      hotfixes: ['px_scaling'],
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
-    
-    html2pdf().set(opt).from(element).save();
-  }, [companyName]);import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Card, CardContent, CardHeader,
   Typography, Button, Slider, 
@@ -93,6 +78,28 @@ const ImplementationGantt = () => {
     }
   };
 
+  // Refs for scaling chart
+  const ganttContainerRef = useRef(null);
+  const ganttContentRef = useRef(null);
+  
+  // Effect to handle scaling the gantt chart to fit the container
+  useEffect(() => {
+    if (ganttContainerRef.current && ganttContentRef.current) {
+      const resizeObserver = new ResizeObserver(() => {
+        adjustGanttScale();
+      });
+      
+      resizeObserver.observe(ganttContainerRef.current);
+      
+      // Initial adjustment
+      adjustGanttScale();
+      
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, []);
+
   // Calculate tier based on employee count
   useEffect(() => {
     let tier, packageName, checkIns;
@@ -117,6 +124,26 @@ const ImplementationGantt = () => {
       moduleCheckIns: checkIns,
     });
   }, [employeeCount]);
+  
+  // Function to adjust gantt scale to fit container
+  const adjustGanttScale = useCallback(() => {
+    if (!ganttContainerRef.current || !ganttContentRef.current) return;
+    
+    const containerWidth = ganttContainerRef.current.clientWidth;
+    const contentWidth = ganttContentRef.current.scrollWidth;
+    
+    // Only scale if content is wider than container
+    if (contentWidth > containerWidth) {
+      const scale = containerWidth / contentWidth;
+      ganttContentRef.current.style.transform = `scale(${scale})`;
+      ganttContentRef.current.style.transformOrigin = 'left top';
+      // Adjust container height to account for scaling
+      ganttContainerRef.current.style.height = `${ganttContentRef.current.scrollHeight * scale}px`;
+    } else {
+      ganttContentRef.current.style.transform = 'none';
+      ganttContainerRef.current.style.height = 'auto';
+    }
+  }, []);
 
   // Calculate timeline based on employee count, tier, and product mix
   const timeline = useMemo(() => {
@@ -398,47 +425,22 @@ const ImplementationGantt = () => {
     productMixes
   ]);
 
-  // Refs for scaling chart
-  const ganttContainerRef = useRef(null);
-  const ganttContentRef = useRef(null);
-  
-  // Effect to handle scaling the gantt chart to fit the container
-  useEffect(() => {
-    if (ganttContainerRef.current && ganttContentRef.current) {
-      const resizeObserver = new ResizeObserver(() => {
-        adjustGanttScale();
-      });
-      
-      resizeObserver.observe(ganttContainerRef.current);
-      
-      // Initial adjustment
-      adjustGanttScale();
-      
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }
-  }, [timeline]);
-  
-  // Function to adjust gantt scale to fit container
-  const adjustGanttScale = useCallback(() => {
-    if (!ganttContainerRef.current || !ganttContentRef.current) return;
+  // Function to handle PDF export
+  const handleExportPDF = useCallback(() => {
+    const element = document.getElementById('gantt-chart-container');
+    const opt = {
+      margin: 0.5,
+      filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+      // Ensure content fits on the page
+      hotfixes: ['px_scaling'],
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
     
-    const containerWidth = ganttContainerRef.current.clientWidth;
-    const contentWidth = ganttContentRef.current.scrollWidth;
-    
-    // Only scale if content is wider than container
-    if (contentWidth > containerWidth) {
-      const scale = containerWidth / contentWidth;
-      ganttContentRef.current.style.transform = `scale(${scale})`;
-      ganttContentRef.current.style.transformOrigin = 'left top';
-      // Adjust container height to account for scaling
-      ganttContainerRef.current.style.height = `${ganttContentRef.current.scrollHeight * scale}px`;
-    } else {
-      ganttContentRef.current.style.transform = 'none';
-      ganttContainerRef.current.style.height = 'auto';
-    }
-  }, []);
+    html2pdf().set(opt).from(element).save();
+  }, [companyName]);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
