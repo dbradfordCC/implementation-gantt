@@ -104,15 +104,144 @@ const ImplementationGantt = () => {
 
   // Calculate timeline based on employee count, tier, and product mix
   const timeline = useMemo(() => {
-    const scaleFactor = employeeCount <= 200 ? 1 : 
-                        employeeCount <= 1000 ? 1.5 : 
-                        2;
-    
     const selectedProductInfo = productMixes[selectedProduct];
     const modules = selectedProductInfo.modules;
     
+    // Check if Onboarding is included in the selected product
+    const hasOnboarding = modules.includes('Onboarding');
+    
+    // Get the service package
+    const servicePackage = tierInfo.package;
+    
+    // For ClearCare Pro (self-paced implementation)
+    if (servicePackage === 'ClearCare Pro') {
+      let tasks = [];
+      
+      // Initiation & Planning Phase - just optional setup assistance
+      tasks.push({
+        id: 'optional-setup',
+        name: 'Optional ClearCompany Setup Assistance',
+        phase: 'Initiation & Planning',
+        start: 0,
+        duration: 2,
+        color: colors.primaryDark,
+        isSelfPaced: false
+      });
+      
+      // Execution Phase - all modules with implementation, setup, learning, testing
+      const moduleTypes = ['Recruiting', 'Onboarding', 'LMS', 'Performance/Goals/Engagement'];
+      
+      for (const moduleType of moduleTypes) {
+        // Only include modules that are part of the selected product
+        if (modules.includes(moduleType)) {
+          tasks.push({
+            id: `${moduleType.toLowerCase()}-implementation`,
+            name: `${moduleType} Implementation`,
+            phase: 'Execution',
+            start: 0,
+            duration: 1, // Not relevant for self-paced
+            color: colors.primaryDark,
+            isSelfPaced: true,
+            selfPacedLabel: 'Variable - Client Self-Paced'
+          });
+          
+          // Add sub-tasks
+          tasks.push({
+            id: `${moduleType.toLowerCase()}-setup`,
+            name: 'Setup',
+            phase: 'Execution',
+            start: 0,
+            duration: 1, // Not relevant for self-paced
+            color: colors.secondaryAlt, // Purple
+            isSelfPaced: true,
+            selfPacedLabel: 'Variable - Client Self-Paced'
+          });
+          
+          tasks.push({
+            id: `${moduleType.toLowerCase()}-learning`,
+            name: 'Learning',
+            phase: 'Execution',
+            start: 0,
+            duration: 1, // Not relevant for self-paced
+            color: colors.secondaryDark, // Dark yellow
+            isSelfPaced: true,
+            selfPacedLabel: 'Variable - Client Self-Paced'
+          });
+          
+          tasks.push({
+            id: `${moduleType.toLowerCase()}-testing`,
+            name: 'Testing',
+            phase: 'Execution',
+            start: 0,
+            duration: 1, // Not relevant for self-paced
+            color: colors.primaryLight, // Light blue
+            isSelfPaced: true,
+            selfPacedLabel: 'Variable - Client Self-Paced'
+          });
+        }
+      }
+      
+      // Launch Phase - just Go Live
+      tasks.push({
+        id: 'golive',
+        name: 'Go Live',
+        phase: 'Launch',
+        start: 0,
+        duration: 1, // Not relevant for self-paced
+        color: colors.secondaryAlt,
+        isSelfPaced: true,
+        selfPacedLabel: 'Variable - Client Self-Paced'
+      });
+      
+      return tasks;
+    }
+    
+    // For ClearCare Advanced and Max
     let tasks = [];
     let currentWeek = 0;
+    
+    // Determine module duration based on service package and employee count
+    let moduleDuration, setupDuration, learningDuration, testingDuration, integrationDuration, dataImportDuration;
+    let rolloutTrainingDuration = 2; // Default
+    let goLiveDuration = 1; // Default
+    
+    if (servicePackage === 'ClearCare Advanced') {
+      if (employeeCount <= 600) {
+        moduleDuration = 5;
+        setupDuration = 2;
+        learningDuration = 3;
+        testingDuration = 5; // Full module duration
+        integrationDuration = 4;
+        dataImportDuration = 4;
+      } else { // 600-1000
+        moduleDuration = 7;
+        setupDuration = 2;
+        learningDuration = 3;
+        testingDuration = 7; // Full module duration
+        integrationDuration = 4;
+        dataImportDuration = 4;
+      }
+    } else { // ClearCare Max
+      if (employeeCount <= 2500) {
+        moduleDuration = 9;
+        setupDuration = 3;
+        learningDuration = 4;
+        testingDuration = 9; // Full module duration
+        integrationDuration = 5;
+        dataImportDuration = 4;
+        rolloutTrainingDuration = 3; // Extended for Max
+        goLiveDuration = 2; // Extended for Max
+      } else { // 2500-4500+
+        moduleDuration = 11;
+        setupDuration = 2;
+        learningDuration = 5;
+        testingDuration = 11; // Full module duration
+        integrationDuration = 5;
+        dataImportDuration = 5;
+        rolloutTrainingDuration = 3; // Extended for Max
+        goLiveDuration = 2; // Extended for Max
+      }
+    }
     
     // Initiation & Planning Phase
     tasks.push({
@@ -120,8 +249,8 @@ const ImplementationGantt = () => {
       name: 'Project Kickoff',
       phase: 'Initiation & Planning',
       start: currentWeek,
-      duration: 1, // Fixed at 1 week
-      color: colors.primaryDark, // Darker blue
+      duration: 1,
+      color: colors.primaryDark,
     });
     
     tasks.push({
@@ -129,7 +258,7 @@ const ImplementationGantt = () => {
       name: 'Requirements Gathering',
       phase: 'Initiation & Planning',
       start: currentWeek,
-      duration: 2, // Fixed at 2 weeks
+      duration: 2,
       color: colors.primaryLighter
     });
     
@@ -138,58 +267,70 @@ const ImplementationGantt = () => {
     // Execution Phase - add modules from the selected product
     for (let i = 0; i < modules.length; i++) {
       const moduleName = modules[i];
-      const needsIntegration = (moduleName === 'Recruiting' || moduleName === 'Onboarding');
-      
-      // Module setup duration, scaled by complexity
-      const moduleDuration = Math.ceil(baseDurations.execution.moduleDuration * scaleFactor);
       
       // Module implementation
       tasks.push({
-        id: `${moduleName.toLowerCase()}-setup`,
+        id: `${moduleName.toLowerCase()}-implementation`,
         name: `${moduleName} Implementation`,
         phase: 'Execution',
         start: currentWeek,
         duration: moduleDuration,
-        color: colors.primaryDark // darker blue
+        color: colors.primaryDark
       });
       
-      // Add integration time if needed - now same length and concurrent with testing
-      if (needsIntegration) {
-        const integrationDuration = moduleDuration * 0.5; // 50% of module time
-        const integrationStart = currentWeek + (moduleDuration * 0.5); // Second half
-        
-        tasks.push({
-          id: `${moduleName.toLowerCase()}-integration`,
-          name: `${moduleName} Integration`,
-          phase: 'Execution',
-          start: integrationStart,
-          duration: integrationDuration,
-          color: colors.secondaryAltLight // lighter purple
-        });
-      }
+      // Module setup (first part of implementation)
+      tasks.push({
+        id: `${moduleName.toLowerCase()}-setup`,
+        name: 'Setup',
+        phase: 'Execution',
+        start: currentWeek,
+        duration: setupDuration,
+        color: colors.secondaryAlt // Purple
+      });
       
-      // Add testing - now 50% of module time during second half
-      const testingStart = currentWeek + (moduleDuration * 0.5); // Second half
-      const testingDuration = moduleDuration * 0.5; // 50% of module time
+      // Module learning (first part of implementation)
+      tasks.push({
+        id: `${moduleName.toLowerCase()}-learning`,
+        name: 'Learning',
+        phase: 'Execution',
+        start: currentWeek,
+        duration: learningDuration,
+        color: colors.secondaryDark // Dark yellow
+      });
       
+      // Module testing (full implementation period)
       tasks.push({
         id: `${moduleName.toLowerCase()}-testing`,
-        name: `${moduleName} Testing & Validation`,
+        name: 'Testing',
         phase: 'Execution',
-        start: testingStart,
+        start: currentWeek,
         duration: testingDuration,
-        color: colors.secondaryDark // darker yellow
+        color: colors.primaryLight // Light blue
       });
       
       // Add historical data import for Recruiting module only
       if (moduleName === 'Recruiting') {
+        const historyStart = currentWeek + moduleDuration - dataImportDuration;
         tasks.push({
           id: 'historical-data-import',
           name: 'Historical Data Import',
           phase: 'Execution',
-          start: testingStart,
-          duration: testingDuration, // Same duration as testing
+          start: historyStart,
+          duration: dataImportDuration,
           color: colors.primaryLight // Light blue
+        });
+      }
+      
+      // Add integration for Onboarding module only
+      if (moduleName === 'Onboarding') {
+        const integrationStart = currentWeek + moduleDuration - integrationDuration;
+        tasks.push({
+          id: 'onboarding-integration',
+          name: 'Onboarding Integration',
+          phase: 'Execution',
+          start: integrationStart,
+          duration: integrationDuration,
+          color: colors.secondaryAltLight // Lighter purple
         });
       }
       
@@ -198,33 +339,34 @@ const ImplementationGantt = () => {
     }
     
     // Launch Phase
-    // Add rollout training for 2 weeks prior to go live
+    // Add rollout training
     tasks.push({
       id: 'rollout-training',
       name: 'Rollout Training',
       phase: 'Launch',
       start: currentWeek,
-      duration: 2, // Fixed at 2 weeks
+      duration: rolloutTrainingDuration,
       color: colors.secondary // yellow
     });
     
-    currentWeek += 2; // Move forward 2 weeks
+    currentWeek += rolloutTrainingDuration;
     
     tasks.push({
       id: 'golive',
       name: 'Go Live',
       phase: 'Launch',
       start: currentWeek,
-      duration: baseDurations.launch.goLive,
+      duration: goLiveDuration,
       color: colors.secondaryAlt // purple
     });
+    
+    currentWeek += goLiveDuration;
     
     return tasks;
   }, [
     employeeCount, 
     selectedProduct, 
-    baseDurations.execution.moduleDuration, 
-    baseDurations.launch.goLive, 
+    tierInfo.package,
     colors.primaryDark, 
     colors.primaryLight, 
     colors.primaryLighter, 
@@ -251,13 +393,42 @@ const ImplementationGantt = () => {
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
-    return timeline.length > 0 ? 
-      Math.ceil(timeline[timeline.length - 1].start + timeline[timeline.length - 1].duration) : 0;
-  }, [timeline]);
+    // For ClearCare Pro, return a special message instead of weeks
+    if (tierInfo.package === 'ClearCare Pro') {
+      return 'Client Self Paced';
+    }
+    
+    // For other packages, calculate based on tasks
+    const lastTask = timeline.length > 0 ? 
+      timeline.reduce((latest, task) => {
+        const taskEnd = task.start + task.duration;
+        return taskEnd > latest ? taskEnd : latest;
+      }, 0) : 0;
+      
+    return Math.ceil(lastTask);
+  }, [timeline, tierInfo.package]);
   
-  // For display purposes
-  const months = Math.floor(totalWeeks / 4);
-  const remainingWeeks = totalWeeks % 4;
+  // For display purposes - only for non-Pro packages
+  const timeDisplay = useMemo(() => {
+    if (tierInfo.package === 'ClearCare Pro') {
+      return "Client Self Paced - 2 Weeks of optional ClearCompany setup assistance provided at the start of the Project";
+    }
+    
+    const weeks = totalWeeks;
+    const months = Math.floor(weeks / 4);
+    const remainingWeeks = weeks % 4;
+    
+    if (months > 0) {
+      return `${weeks} weeks (${months} month${months > 1 ? 's' : ''}${remainingWeeks > 0 ? ` and ${remainingWeeks} week${remainingWeeks > 1 ? 's' : ''}` : ''})`;
+    } else {
+      return `${weeks} weeks`;
+    }
+  }, [totalWeeks, tierInfo.package]);
+
+  // Format employee count for display
+  const displayEmployeeCount = useMemo(() => {
+    return employeeCount >= 4500 ? '4,500+' : employeeCount;
+  }, [employeeCount]);
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333' }}>
@@ -283,7 +454,7 @@ const ImplementationGantt = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Box>
               <Typography variant="subtitle1" gutterBottom>
-                Employee Count: {employeeCount}
+                Employee Count: {displayEmployeeCount}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <TextField
@@ -296,7 +467,7 @@ const ImplementationGantt = () => {
                 <Box sx={{ flexGrow: 1 }}>
                   <Slider
                     min={1}
-                    max={2000}
+                    max={4500}
                     value={employeeCount}
                     onChange={(_, value) => setEmployeeCount(value)}
                   />
@@ -393,8 +564,7 @@ const ImplementationGantt = () => {
                 Estimated Timeline:
               </Typography>
               <Typography variant="h6">
-                {totalWeeks} weeks
-                {months > 0 ? ` (${months} month${months > 1 ? 's' : ''}${remainingWeeks > 0 ? ` and ${remainingWeeks} week${remainingWeeks > 1 ? 's' : ''}` : ''})` : ''}
+                {timeDisplay}
               </Typography>
             </Box>
           </Box>
@@ -437,54 +607,66 @@ const ImplementationGantt = () => {
                       {phase}
                     </Box>
                     
-                    {phaseTasks.map(task => (
-                      <Box 
-                        key={task.id} 
-                        sx={{ 
-                          display: 'flex', 
-                          mb: 1.5, 
-                          alignItems: 'center', 
-                          height: '32px'
-                        }}
-                      >
+                    {phaseTasks.map(task => {
+                      // Determine if we should use a dotted border for self-paced tasks
+                      const borderStyle = task.isSelfPaced ? 'dashed' : 'solid';
+                      
+                      // Determine width for self-paced tasks (full width) vs regular tasks
+                      const barWidth = task.isSelfPaced ? 'calc(100% - 200px)' : `${task.duration * 24}px`;
+                      
+                      // Determine what text to display inside the bar
+                      const barText = task.isSelfPaced ? task.selfPacedLabel : 
+                                     (task.duration >= 0.5 ? `${task.duration}w` : '');
+                      
+                      return (
                         <Box 
+                          key={task.id} 
                           sx={{ 
-                            position: 'sticky', 
-                            left: 0, 
-                            width: '200px', 
-                            backgroundColor: 'white', 
-                            zIndex: 10, 
-                            px: 1,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap',
-                            color: colors.dark
+                            display: 'flex', 
+                            mb: 1.5, 
+                            alignItems: 'center', 
+                            height: '32px'
                           }}
                         >
-                          {task.name}
-                        </Box>
-                        <Box sx={{ flexGrow: 1, position: 'relative', height: '32px' }}>
                           <Box 
                             sx={{ 
-                              position: 'absolute', 
-                              borderRadius: '4px', 
-                              display: 'flex', 
-                              alignItems: 'center', 
-                              justifyContent: 'center', 
-                              fontSize: '0.875rem',
-                              left: `${task.start * 24}px`,
-                              width: `${task.duration * 24}px`,
-                              backgroundColor: task.color,
-                              height: '32px',
-                              color: task.color === colors.secondary || task.color === colors.secondaryDark ? '#254677' : '#FFFFFF',
-                              border: '1px solid rgba(0,0,0,0.1)'
+                              position: 'sticky', 
+                              left: 0, 
+                              width: '200px', 
+                              backgroundColor: 'white', 
+                              zIndex: 10, 
+                              px: 1,
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis',
+                              whiteSpace: 'nowrap',
+                              color: colors.dark
                             }}
                           >
-                            {task.duration >= 0.5 ? `${task.duration}w` : ''}
+                            {task.name}
+                          </Box>
+                          <Box sx={{ flexGrow: 1, position: 'relative', height: '32px' }}>
+                            <Box 
+                              sx={{ 
+                                position: 'absolute', 
+                                borderRadius: '4px', 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                justifyContent: 'center', 
+                                fontSize: '0.875rem',
+                                left: task.isSelfPaced ? 0 : `${task.start * 24}px`,
+                                width: barWidth,
+                                backgroundColor: task.color,
+                                height: '32px',
+                                color: task.color === colors.secondary || task.color === colors.secondaryDark ? '#254677' : '#FFFFFF',
+                                border: `1px ${borderStyle} rgba(0,0,0,0.1)`
+                              }}
+                            >
+                              {barText}
+                            </Box>
                           </Box>
                         </Box>
-                      </Box>
-                    ))}
+                      );
+                    })}
                   </Box>
                 );
               })}
