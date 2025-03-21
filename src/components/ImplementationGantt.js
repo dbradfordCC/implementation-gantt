@@ -1,4 +1,41 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+// Effect for better handling of complex tasks and keeping everything on one page
+  useEffect(() => {
+    // Add event listener for beforeprint to modify the layout for best printing
+    const handleBeforePrint = () => {
+      const ganttContainer = document.getElementById('gantt-chart-container');
+      const execution = document.querySelector('.phase-container');
+      
+      if (ganttContainer) {
+        // Force scale down for printing to ensure it fits on one page
+        ganttContainer.style.transform = 'scale(0.85)';
+        ganttContainer.style.transformOrigin = 'top left';
+      }
+      
+      // Find all task rows and ensure they don't break
+      const taskRows = document.querySelectorAll('.task-row');
+      taskRows.forEach(row => {
+        row.style.pageBreakInside = 'avoid';
+        row.style.breakInside = 'avoid';
+      });
+    };
+    
+    // Add event listener for afterprint to restore normal layout
+    const handleAfterPrint = () => {
+      const ganttContainer = document.getElementById('gantt-chart-container');
+      
+      if (ganttContainer) {
+        ganttContainer.style.transform = '';
+      }
+    };
+    
+    window.addEventListener('beforeprint', handleBeforePrint);
+    window.addEventListener('afterprint', handleAfterPrint);
+    
+    return () => {
+      window.removeEventListener('beforeprint', handleBeforePrint);
+      window.removeEventListener('afterprint', handleAfterPrint);
+    };
+  }, []);import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Card, CardContent, CardHeader,
   Typography, Button, Slider, 
@@ -465,12 +502,23 @@ const ImplementationGantt = () => {
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
     try {
+      // Set document title for better PDF naming
+      const originalTitle = document.title;
+      document.title = companyName ? 
+        `${companyName.trim()} - ClearCo Implementation Gantt Chart` : 
+        'ClearCo Implementation Gantt Chart';
+      
       // Simply trigger the browser print dialog which will give better results
       window.print();
+      
+      // Restore original title after printing
+      setTimeout(() => {
+        document.title = originalTitle;
+      }, 1000);
     } catch (error) {
       console.error('Error in PDF export:', error);
     }
-  }, []);
+  }, [companyName]);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
