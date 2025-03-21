@@ -1,4 +1,19 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+// Function to handle PDF export
+  const handleExportPDF = useCallback(() => {
+    const element = document.getElementById('gantt-chart-container');
+    const opt = {
+      margin: 0.5,
+      filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+      // Ensure content fits on the page
+      hotfixes: ['px_scaling'],
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
+    };
+    
+    html2pdf().set(opt).from(element).save();
+  }, [companyName]);import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Card, CardContent, CardHeader,
   Typography, Button, Slider, 
@@ -269,6 +284,11 @@ const ImplementationGantt = () => {
     for (let i = 0; i < modules.length; i++) {
       const moduleName = modules[i];
       
+      // Start the next module 1 week before the previous module ends (overlap)
+      if (i > 0) {
+        currentWeek -= 1; // Overlap by 1 week
+      }
+      
       // Module implementation
       tasks.push({
         id: `${moduleName.toLowerCase()}-implementation`,
@@ -378,22 +398,47 @@ const ImplementationGantt = () => {
     productMixes
   ]);
 
-  // Function to handle PDF export
-  const handleExportPDF = useCallback(() => {
-    const element = document.getElementById('gantt-chart-container');
-    const opt = {
-      margin: 0.5,
-      filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-      // Ensure content fits on the page
-      hotfixes: ['px_scaling'],
-      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
-    };
+  // Refs for scaling chart
+  const ganttContainerRef = useRef(null);
+  const ganttContentRef = useRef(null);
+  
+  // Effect to handle scaling the gantt chart to fit the container
+  useEffect(() => {
+    if (ganttContainerRef.current && ganttContentRef.current) {
+      const resizeObserver = new ResizeObserver(() => {
+        adjustGanttScale();
+      });
+      
+      resizeObserver.observe(ganttContainerRef.current);
+      
+      // Initial adjustment
+      adjustGanttScale();
+      
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, [timeline]);
+  
+  // Function to adjust gantt scale to fit container
+  const adjustGanttScale = useCallback(() => {
+    if (!ganttContainerRef.current || !ganttContentRef.current) return;
     
-    html2pdf().set(opt).from(element).save();
-  }, [companyName]);
+    const containerWidth = ganttContainerRef.current.clientWidth;
+    const contentWidth = ganttContentRef.current.scrollWidth;
+    
+    // Only scale if content is wider than container
+    if (contentWidth > containerWidth) {
+      const scale = containerWidth / contentWidth;
+      ganttContentRef.current.style.transform = `scale(${scale})`;
+      ganttContentRef.current.style.transformOrigin = 'left top';
+      // Adjust container height to account for scaling
+      ganttContainerRef.current.style.height = `${ganttContentRef.current.scrollHeight * scale}px`;
+    } else {
+      ganttContentRef.current.style.transform = 'none';
+      ganttContainerRef.current.style.height = 'auto';
+    }
+  }, []);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
@@ -440,9 +485,16 @@ const ImplementationGantt = () => {
         <CardHeader 
           title={
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-                Implementation Project Configuration
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <img 
+                  src="https://cc-client-cdn.clearcompany.com/7d1a23bb-d726-1404-8eb3-460472842d52/custom-files/409caa49-4479-275f-a9ce-2bb70eb9eb4d/ClearCompany_Main_Resized.png" 
+                  alt="ClearCompany Logo" 
+                  style={{ height: '40px' }}
+                />
+                <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
+                  Implementation Project Configuration
+                </Typography>
+              </Box>
               <Button 
                 variant="contained" 
                 startIcon={<Download size={16} />} 
@@ -456,43 +508,42 @@ const ImplementationGantt = () => {
         />
         <CardContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={7}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Employee Count: {displayEmployeeCount}
-                </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                  <TextField
-                    type="number"
-                    value={employeeCount}
-                    onChange={(e) => setEmployeeCount(Number(e.target.value))}
-                    inputProps={{ min: 1 }}
-                    sx={{ width: '100px' }}
-                  />
-                  <Box sx={{ flexGrow: 1 }}>
-                    <Slider
-                      min={1}
-                      max={4500}
-                      value={employeeCount}
-                      onChange={(_, value) => setEmployeeCount(value)}
-                    />
-                  </Box>
-                </Box>
-              </Grid>
-              <Grid item xs={12} md={5}>
-                <Typography variant="subtitle1" gutterBottom>
-                  Company Name
-                </Typography>
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Company Name
+              </Typography>
+              <TextField
+                fullWidth
+                value={companyName}
+                onChange={(e) => setCompanyName(e.target.value)}
+                placeholder="Enter company name"
+                variant="outlined"
+                size="small"
+              />
+            </Box>
+            
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Employee Count: {displayEmployeeCount}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <TextField
-                  fullWidth
-                  value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
-                  placeholder="Enter company name"
-                  variant="outlined"
-                  size="small"
+                  type="number"
+                  value={employeeCount}
+                  onChange={(e) => setEmployeeCount(Number(e.target.value))}
+                  inputProps={{ min: 1 }}
+                  sx={{ width: '100px' }}
                 />
-              </Grid>
-            </Grid>
+                <Box sx={{ flexGrow: 1 }}>
+                  <Slider
+                    min={1}
+                    max={4500}
+                    value={employeeCount}
+                    onChange={(_, value) => setEmployeeCount(value)}
+                  />
+                </Box>
+              </Box>
+            </Box>
             
             <Grid container spacing={2}>
               <Grid item xs={6}>
@@ -599,8 +650,17 @@ const ImplementationGantt = () => {
           }
         />
         <CardContent>
-          <Box sx={{ overflowX: 'auto', pb: 3 }}>
-            <Box sx={{ position: 'relative', minWidth: '700px', maxWidth: '100%', '@media print': { maxWidth: '100vw' } }}>
+          <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', pb: 3 }}>
+            <Box 
+              ref={ganttContentRef} 
+              sx={{ 
+                position: 'relative', 
+                minWidth: '700px', 
+                transform: 'scale(1)',
+                transformOrigin: 'left top',
+                '@media print': { maxWidth: '100vw' } 
+              }}
+            >
               {/* Group by phase */}
               {['Initiation & Planning', 'Execution', 'Launch'].map(phase => {
                 const phaseTasks = timeline.filter(task => task.phase === phase);
@@ -613,7 +673,7 @@ const ImplementationGantt = () => {
                       sx={{ 
                         position: 'sticky', 
                         left: 0, 
-                        width: '200px', 
+                        width: '250px', // Increased from 200px to show full task names
                         fontWeight: 'bold', 
                         py: 1.5, 
                         px: 1, 
@@ -626,12 +686,25 @@ const ImplementationGantt = () => {
                       {phase}
                     </Box>
                     
+                    {/* Phase header background that spans full width */}
+                    <Box 
+                      sx={{ 
+                        position: 'absolute',
+                        left: '250px', // Match width of task name column
+                        right: 0,
+                        height: '48px', // Match height of phase header
+                        backgroundColor: colors.lightGray,
+                        zIndex: 5,
+                        mt: -6 // Offset to align with header
+                      }}
+                    />
+                    
                     {phaseTasks.map(task => {
                       // Determine if we should use a dotted border for self-paced tasks
                       const borderStyle = task.isSelfPaced ? 'dashed' : 'solid';
                       
                       // Determine width for self-paced tasks (full width) vs regular tasks
-                      const barWidth = task.isSelfPaced ? 'calc(100% - 200px)' : `${task.duration * 24}px`;
+                      const barWidth = task.isSelfPaced ? 'calc(100% - 250px)' : `${task.duration * 24}px`;
                       
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
@@ -671,10 +744,11 @@ const ImplementationGantt = () => {
                             sx={{ 
                               position: 'sticky', 
                               left: 0, 
-                              width: '200px', 
+                              width: '250px', // Increased from 200px
                               backgroundColor: 'white', 
                               zIndex: 10, 
                               px: 1,
+                              fontSize: '0.9rem', // Slightly smaller text to fit longer names
                               overflow: 'hidden',
                               textOverflow: 'ellipsis',
                               whiteSpace: 'nowrap',
