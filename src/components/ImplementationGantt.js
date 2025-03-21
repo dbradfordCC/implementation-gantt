@@ -7,6 +7,7 @@ import {
 } from '@mui/material';
 import { Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
+import { jsPDF } from 'jspdf';
 
 const ImplementationGantt = () => {
   // Color scheme based on provided brand colors
@@ -120,25 +121,37 @@ const ImplementationGantt = () => {
     }
   }, [adjustGanttScale]);
 
-  // Add print-specific styles
+  // Add specialized print styles
   useEffect(() => {
     // Create a style element for print styles
     const style = document.createElement('style');
     style.textContent = `
       @media print {
         @page {
-          size: landscape;
-          margin: 0.5in;
+          size: 11in 8.5in landscape;
+          margin: 0.25in;
         }
         body {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
         }
         #config-card {
-          page-break-after: always;
+          margin: 0;
+          padding: 0;
+          max-height: 8in;
+          overflow: hidden;
         }
         #gantt-chart-container {
-          page-break-before: always;
+          margin: 0;
+          padding: 0;
+          max-height: 8in;
+          overflow: hidden;
+        }
+        .MuiCardContent-root {
+          padding: 10px !important;
+        }
+        .MuiCardHeader-root {
+          padding: 10px !important;
         }
       }
     `;
@@ -456,18 +469,50 @@ const ImplementationGantt = () => {
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
-    const element = document.body; // Capture the entire page for proper page breaks
+    const configElement = document.getElementById('config-card');
+    const ganttElement = document.getElementById('gantt-chart-container');
+    
+    // Set up PDF options
     const opt = {
-      margin: 0.5,
+      margin: [0.25, 0.25], // Smaller margins [top/bottom, left/right]
       filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-      // Ensure content respects page breaks
-      pagebreak: { mode: ['css', 'legacy'], before: ['#gantt-chart-container'] }
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { 
+        scale: 1.5, 
+        useCORS: true,
+        logging: false,
+        letterRendering: true
+      },
+      jsPDF: { 
+        unit: 'in', 
+        format: 'letter', 
+        orientation: 'landscape',
+        compress: true 
+      }
     };
     
-    html2pdf().set(opt).from(element).save();
+    // First create a PDF document
+    const pdf = new window.jspdf.jsPDF(opt.jsPDF);
+    
+    // Create a promise chain to capture both elements sequentially
+    html2pdf()
+      .from(configElement)
+      .set(opt)
+      .outputPdf('datauristring')
+      .then((configPdfString) => {
+        // First page is done, now add second page
+        pdf.addPage();
+        
+        // Now capture the Gantt chart
+        return html2pdf()
+          .from(ganttElement)
+          .set(opt)
+          .outputPdf('datauristring');
+      })
+      .then((ganttPdfString) => {
+        // Now save the complete PDF
+        pdf.save(opt.filename);
+      });
   }, [companyName]);
 
   // Calculate total implementation time
