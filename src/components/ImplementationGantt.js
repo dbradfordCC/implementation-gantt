@@ -1,81 +1,84 @@
-(task.duration >= 0.5 ? `${task.duration}w` : '');
-                                     
-                      // For Pro package, use lighter fills with darker borders for all but setup
-                      const isProPackage = tierInfo.package === 'ClearCare Pro';
-                      const isSetupTask = task.name === 'Setup' || task.name === 'Optional ClearCompany Setup Assistance';
-                      
-                      // Determine background and border colors
-                      let backgroundColor = task.color;
-                      let borderColor = `1px ${borderStyle} rgba(0,0,0,0.1)`;
-                      
-                      if (isProPackage && !isSetupTask && task.isSelfPaced) {
-                        // Create a lighter version of the color for fill
-                        const lightColor = task.color === colors.primaryDark ? 'rgba(37, 70, 119, 0.15)' :
-                                         task.color === colors.secondaryAlt ? 'rgba(130, 34, 117, 0.15)' :
-                                         task.color === colors.secondaryDark ? 'rgba(230, 230, 81, 0.15)' :
-                                         task.color === colors.primaryLight ? 'rgba(85, 186, 234, 0.15)' :
-                                         'rgba(255, 255, 255, 0.15)';
-                                         
-                        backgroundColor = lightColor;
-                        borderColor = `1px ${borderStyle} ${task.color}`;
-                      }
-                      
-                      return (
-                        <Box 
-                          className="task-row"
-                          key={task.id} 
-                          sx={{ 
-                            display: 'flex', 
-                            mb: 1.5, 
-                            alignItems: 'center', 
-                            height: '32px'
-                          }}
-                        >
-                          <Box 
-                            sx={{ 
-                              position: 'sticky', 
-                              left: 0, 
-                              width: '260px', // Increased from 200px
-                              backgroundColor: 'white', 
-                              zIndex: 10, 
-                              px: 1,
-                              fontSize: '0.9rem', // Slightly smaller text to fit longer names
-                              overflow: 'visible', // Changed from 'hidden' to prevent truncation
-                              whiteSpace: 'normal', // Changed from 'nowrap' to allow wrapping
-                              lineHeight: '1.2',
-                              color: colors.dark
-                            }}
-                          >
-                            {task.name}
-                          </Box>
-                          <Box sx={{ flexGrow: 1, position: 'relative', height: '32px' }}>
-                            <Box 
-                              data-task-bar="true"
-                              sx={{ 
-                                position: 'absolute', 
-                                borderRadius: '4px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                fontSize: '0.875rem',
-                                left: task.isSelfPaced ? 0 : `${task.start * 24}px`,
-                                width: barWidth,
-                                backgroundColor: backgroundColor,
-                                height: '32px',
-                                color: (task.color === colors.secondary || task.color === colors.secondaryDark || 
-                                       (isProPackage && !isSetupTask && task.isSelfPaced)) ? '#254677' : '#FFFFFF',
-                                border: borderColor
-                              }}
-                            >
-                              {barText}
-                            </Box>
-                          </Box>
-                        </Box>
-                      );
-                    })}
+value={product} 
+                          control={<Radio />} 
+                          label={product} 
+                        />
+                      </Paper>
+                    </Grid>
+                  ))}
+                </Grid>
+              </RadioGroup>
+            </Box>
+            
+            <Box>
+              <Typography variant="subtitle1" gutterBottom>
+                Selected Product Modules
+              </Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 1 }}>
+                {productMixes[selectedProduct].modules.map(module => (
+                  <Box 
+                    key={module} 
+                    sx={{ 
+                      bgcolor: '#e3f2fd', 
+                      color: '#254677', 
+                      px: 2, 
+                      py: 0.5, 
+                      borderRadius: 10,
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    {module}
                   </Box>
-                );
-              })}
+                ))}
+              </Box>
+            </Box>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="subtitle1">
+                Module Check-ins:
+              </Typography>
+              <Typography variant="h6">
+                {tierInfo.moduleCheckIns} per module
+              </Typography>
+            </Box>
+            
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Typography variant="subtitle1">
+                Estimated Timeline:
+              </Typography>
+              <Typography variant="h6">
+                {timeDisplay}
+              </Typography>
+            </Box>
+          </Box>
+        </CardContent>
+      </Card>
+      
+      <Card id="gantt-chart-container" sx={{ pageBreakBefore: 'always' }}>
+        <CardHeader 
+          title={
+            <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
+              {companyName ? `${companyName} - Implementation Gantt Chart` : 'Implementation Gantt Chart'}
+            </Typography>
+          }
+        />
+        <CardContent>
+          <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', overflowY: 'visible', pb: 3 }}>
+            <Box 
+              data-gantt-content="true"
+              ref={ganttContentRef} 
+              sx={{ 
+                position: 'relative', 
+                minWidth: '700px', 
+                transform: 'scale(1)',
+                transformOrigin: 'left top',
+                '@media print': { 
+                  maxWidth: '100vw',
+                  transform: 'scale(1)',
+                }
+              }}
+            >
+              {/* Simplified rendering of phases using the helper function */}
+              {['Initiation & Planning', 'Execution', 'Launch'].map(phase => renderPhaseTasks(phase))}
             </Box>
           </Box>
         </CardContent>
