@@ -465,127 +465,54 @@ const ImplementationGantt = () => {
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
     try {
-      // Prepare for PDF export - temporarily modify DOM for better capture
-      const ganttContainer = document.getElementById('gantt-chart-container');
-      const configCard = document.getElementById('config-card');
-      
-      if (!ganttContainer || !configCard) {
-        console.error('Could not find elements for PDF export');
-        return;
-      }
-      
-      // Create a temporary container with clones of our content to avoid modifying the actual DOM
-      const tempContainer = document.createElement('div');
-      tempContainer.style.visibility = 'hidden';
-      tempContainer.style.position = 'absolute';
-      tempContainer.style.left = '-9999px';
-      tempContainer.style.top = '-9999px';
-      document.body.appendChild(tempContainer);
-      
-      // Clone the elements we need
-      const configClone = configCard.cloneNode(true);
-      const ganttClone = ganttContainer.cloneNode(true);
-      
-      // Reset any transformations on the gantt clone for proper capture
-      const ganttContent = ganttClone.querySelector('[data-gantt-content="true"]');
-      if (ganttContent) {
-        ganttContent.style.transform = 'none';
-        ganttContent.style.width = 'auto';
-        ganttContent.style.maxWidth = 'none';
-      }
-      
-      // Clear any existing children in temp container
-      tempContainer.innerHTML = '';
-      
-      // Add our clones to the temp container
-      tempContainer.appendChild(configClone);
-      tempContainer.appendChild(ganttClone);
-      
-      // Set up options for two-page PDF with one element per page
+      // Set up options for portrait PDF with white backgrounds
       const opt = {
         margin: 0.25,
         filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
-        image: { type: 'jpeg', quality: 1 },
+        image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { 
           scale: 1.5,
           useCORS: true,
-          logging: false
+          backgroundColor: '#ffffff'
         },
         jsPDF: { 
           unit: 'in', 
           format: 'letter', 
-          orientation: 'landscape'
+          orientation: 'portrait',
+          compress: true
         },
-        pagebreak: { mode: ['avoid-all'] }
+        pagebreak: { 
+          mode: ['avoid-all', 'css', 'legacy'],
+          before: '#gantt-chart-container'
+        }
       };
       
-      // Create a new jsPDF instance
-      const pdf = new window.jspdf.jsPDF({
-        orientation: 'landscape',
-        unit: 'in',
-        format: 'letter'
-      });
+      // Create a temporary white background div to prevent dark backgrounds
+      const whiteBackground = document.createElement('div');
+      whiteBackground.style.position = 'fixed';
+      whiteBackground.style.zIndex = '-1000';
+      whiteBackground.style.left = '0';
+      whiteBackground.style.top = '0';
+      whiteBackground.style.width = '100%';
+      whiteBackground.style.height = '100%';
+      whiteBackground.style.backgroundColor = '#ffffff';
+      document.body.appendChild(whiteBackground);
       
-      // First capture and add the config page
+      // Export the PDF
       html2pdf()
-        .from(configClone)
+        .from(document.body)
         .set(opt)
-        .outputPdf('datauristring')
-        .then((configPdfString) => {
-          // Now capture the Gantt chart
-          return html2pdf()
-            .from(ganttClone)
-            .set(opt)
-            .outputPdf('datauristring');
-        })
-        .then((ganttPdfString) => {
-          // Clean up our temporary elements
-          document.body.removeChild(tempContainer);
-          
-          // Save a simple version as fallback
-          html2pdf()
-            .from(document.body)
-            .set({
-              margin: 0.25,
-              filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
-              image: { type: 'jpeg', quality: 0.95 },
-              html2canvas: { scale: 1.5 },
-              jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-              pagebreak: { before: '#gantt-chart-container', avoid: 'img, table, pre' }
-            })
-            .save();
+        .save()
+        .then(() => {
+          // Clean up
+          document.body.removeChild(whiteBackground);
         })
         .catch((err) => {
           console.error('Error generating PDF:', err);
-          document.body.removeChild(tempContainer);
-          
-          // Fallback to simpler version
-          html2pdf()
-            .from(document.body)
-            .set({
-              margin: 0.25,
-              filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
-              jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-              pagebreak: { before: '#gantt-chart-container' }
-            })
-            .save();
+          document.body.removeChild(whiteBackground);
         });
     } catch (error) {
       console.error('Error in PDF export:', error);
-      
-      // Ultimate fallback
-      try {
-        html2pdf()
-          .from(document.body)
-          .set({
-            margin: 0.25,
-            filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
-          })
-          .save();
-      } catch (e) {
-        console.error('Fallback PDF export also failed:', e);
-      }
     }
   }, [companyName]);
 
