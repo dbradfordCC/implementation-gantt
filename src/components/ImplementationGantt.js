@@ -465,7 +465,7 @@ const ImplementationGantt = () => {
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
     try {
-      // Set up options for portrait PDF with white backgrounds
+      // Set up options for landscape PDF with white backgrounds
       const opt = {
         margin: 0.25,
         filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
@@ -473,12 +473,15 @@ const ImplementationGantt = () => {
         html2canvas: { 
           scale: 1.5,
           useCORS: true,
-          backgroundColor: '#ffffff'
+          backgroundColor: '#ffffff',
+          windowWidth: document.documentElement.scrollWidth + 500, // Add extra width for TotalTalent tasks
+          width: document.documentElement.scrollWidth + 500,
+          logging: false,
         },
         jsPDF: { 
           unit: 'in', 
-          format: 'letter', 
-          orientation: 'portrait',
+          format: [11, 8.5], // Explicitly set landscape dimensions
+          orientation: 'landscape',
           compress: true
         },
         pagebreak: { 
@@ -486,6 +489,18 @@ const ImplementationGantt = () => {
           before: '#gantt-chart-container'
         }
       };
+      
+      // Hide export button and slider value temporarily
+      const exportButton = document.querySelector('.export-pdf-button');
+      const sliderValues = document.querySelectorAll('.MuiSlider-valueLabel');
+      
+      if (exportButton) {
+        exportButton.style.display = 'none';
+      }
+      
+      sliderValues.forEach(el => {
+        if (el) el.style.display = 'none';
+      });
       
       // Create a temporary white background div to prevent dark backgrounds
       const whiteBackground = document.createElement('div');
@@ -504,12 +519,29 @@ const ImplementationGantt = () => {
         .set(opt)
         .save()
         .then(() => {
-          // Clean up
+          // Clean up and restore elements
           document.body.removeChild(whiteBackground);
+          
+          if (exportButton) {
+            exportButton.style.display = '';
+          }
+          
+          sliderValues.forEach(el => {
+            if (el) el.style.display = '';
+          });
         })
         .catch((err) => {
           console.error('Error generating PDF:', err);
           document.body.removeChild(whiteBackground);
+          
+          // Restore elements
+          if (exportButton) {
+            exportButton.style.display = '';
+          }
+          
+          sliderValues.forEach(el => {
+            if (el) el.style.display = '';
+          });
         });
     } catch (error) {
       console.error('Error in PDF export:', error);
@@ -577,6 +609,7 @@ const ImplementationGantt = () => {
                 variant="contained" 
                 startIcon={<Download size={16} />} 
                 onClick={handleExportPDF}
+                className="export-pdf-button"
                 sx={{ backgroundColor: colors.primary }}
               >
                 Export PDF
@@ -618,6 +651,7 @@ const ImplementationGantt = () => {
                     max={4500}
                     value={employeeCount}
                     onChange={(_, value) => setEmployeeCount(value)}
+                    valueLabelDisplay="auto"
                   />
                 </Box>
               </Box>
