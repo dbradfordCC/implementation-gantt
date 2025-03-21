@@ -471,11 +471,29 @@ const ImplementationGantt = () => {
         return;
       }
       
+      // First, temporarily adjust any scaling to ensure full content capture
+      const allTaskBars = document.querySelectorAll('[data-task-bar="true"]');
+      const totalDuration = Array.from(allTaskBars).reduce((max, el) => {
+        const style = window.getComputedStyle(el);
+        const left = parseFloat(style.left);
+        const width = parseFloat(style.width);
+        const end = left + width;
+        return Math.max(max, end);
+      }, 0);
+      
+      // Adjust canvas width to ensure all content is captured
+      const canvasWidth = Math.max(1200, totalDuration + 300); // Add padding
+      
       const opt = {
-        margin: 0.5,
+        margin: 0.25,
         filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
         image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 1.5 },
+        html2canvas: { 
+          scale: 1.5,
+          width: canvasWidth, 
+          windowWidth: canvasWidth,
+          useCORS: true
+        },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
         pagebreak: { before: '#gantt-chart-container' }
       };
@@ -624,7 +642,8 @@ const ImplementationGantt = () => {
                   {Object.keys(productMixes).map(product => (
                     <Grid item xs={6} sm={4} key={product}>
                       <Paper 
-                        sx={{ 
+                        className="phase-header-bg"
+                      sx={{ 
                           p: 1, 
                           border: '1px solid',
                           borderColor: selectedProduct === product ? '#254677' : '#e0e0e0',
@@ -820,6 +839,7 @@ const ImplementationGantt = () => {
                                 alignItems: 'center', 
                                 justifyContent: 'center', 
                                 fontSize: '0.875rem',
+                                data-task-bar="true"
                                 left: task.isSelfPaced ? 0 : `${task.start * 24}px`,
                                 width: barWidth,
                                 backgroundColor: backgroundColor,
