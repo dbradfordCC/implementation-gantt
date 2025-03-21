@@ -465,42 +465,127 @@ const ImplementationGantt = () => {
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
     try {
-      const element = document.body;
-      if (!element) {
-        console.error('Could not find element for PDF export');
+      // Prepare for PDF export - temporarily modify DOM for better capture
+      const ganttContainer = document.getElementById('gantt-chart-container');
+      const configCard = document.getElementById('config-card');
+      
+      if (!ganttContainer || !configCard) {
+        console.error('Could not find elements for PDF export');
         return;
       }
       
-      // First, temporarily adjust any scaling to ensure full content capture
-      const allTaskBars = document.querySelectorAll('[data-task-bar]');
-      const totalDuration = Array.from(allTaskBars).reduce((max, el) => {
-        const style = window.getComputedStyle(el);
-        const left = parseFloat(style.left || '0');
-        const width = parseFloat(style.width || '0');
-        const end = left + width;
-        return Math.max(max, end);
-      }, 0);
+      // Create a temporary container with clones of our content to avoid modifying the actual DOM
+      const tempContainer = document.createElement('div');
+      tempContainer.style.visibility = 'hidden';
+      tempContainer.style.position = 'absolute';
+      tempContainer.style.left = '-9999px';
+      tempContainer.style.top = '-9999px';
+      document.body.appendChild(tempContainer);
       
-      // Adjust canvas width to ensure all content is captured
-      const canvasWidth = Math.max(1200, totalDuration + 300); // Add padding
+      // Clone the elements we need
+      const configClone = configCard.cloneNode(true);
+      const ganttClone = ganttContainer.cloneNode(true);
       
+      // Reset any transformations on the gantt clone for proper capture
+      const ganttContent = ganttClone.querySelector('[data-gantt-content="true"]');
+      if (ganttContent) {
+        ganttContent.style.transform = 'none';
+        ganttContent.style.width = 'auto';
+        ganttContent.style.maxWidth = 'none';
+      }
+      
+      // Clear any existing children in temp container
+      tempContainer.innerHTML = '';
+      
+      // Add our clones to the temp container
+      tempContainer.appendChild(configClone);
+      tempContainer.appendChild(ganttClone);
+      
+      // Set up options for two-page PDF with one element per page
       const opt = {
         margin: 0.25,
         filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
+        image: { type: 'jpeg', quality: 1 },
         html2canvas: { 
           scale: 1.5,
-          width: canvasWidth, 
-          windowWidth: canvasWidth,
-          useCORS: true
+          useCORS: true,
+          logging: false
         },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-        pagebreak: { before: '#gantt-chart-container' }
+        jsPDF: { 
+          unit: 'in', 
+          format: 'letter', 
+          orientation: 'landscape'
+        },
+        pagebreak: { mode: ['avoid-all'] }
       };
       
-      html2pdf().from(element).set(opt).save();
+      // Create a new jsPDF instance
+      const pdf = new window.jspdf.jsPDF({
+        orientation: 'landscape',
+        unit: 'in',
+        format: 'letter'
+      });
+      
+      // First capture and add the config page
+      html2pdf()
+        .from(configClone)
+        .set(opt)
+        .outputPdf('datauristring')
+        .then((configPdfString) => {
+          // Now capture the Gantt chart
+          return html2pdf()
+            .from(ganttClone)
+            .set(opt)
+            .outputPdf('datauristring');
+        })
+        .then((ganttPdfString) => {
+          // Clean up our temporary elements
+          document.body.removeChild(tempContainer);
+          
+          // Save a simple version as fallback
+          html2pdf()
+            .from(document.body)
+            .set({
+              margin: 0.25,
+              filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
+              image: { type: 'jpeg', quality: 0.95 },
+              html2canvas: { scale: 1.5 },
+              jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+              pagebreak: { before: '#gantt-chart-container', avoid: 'img, table, pre' }
+            })
+            .save();
+        })
+        .catch((err) => {
+          console.error('Error generating PDF:', err);
+          document.body.removeChild(tempContainer);
+          
+          // Fallback to simpler version
+          html2pdf()
+            .from(document.body)
+            .set({
+              margin: 0.25,
+              filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
+              jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+              pagebreak: { before: '#gantt-chart-container' }
+            })
+            .save();
+        });
     } catch (error) {
       console.error('Error in PDF export:', error);
+      
+      // Ultimate fallback
+      try {
+        html2pdf()
+          .from(document.body)
+          .set({
+            margin: 0.25,
+            filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+          })
+          .save();
+      } catch (e) {
+        console.error('Fallback PDF export also failed:', e);
+      }
     }
   }, [companyName]);
 
@@ -524,7 +609,7 @@ const ImplementationGantt = () => {
   // For display purposes - only for non-Pro packages
   const timeDisplay = useMemo(() => {
     if (tierInfo.package === 'ClearCare Pro') {
-      return "Client Self Paced - 2 Weeks of optional ClearCompany setup assistance provided at the start of the Project";
+      return "Client Self-Paced - 2 Weeks of optional ClearCompany setup assistance provided at the start of the project";
     }
     
     const weeks = totalWeeks;
@@ -719,6 +804,7 @@ const ImplementationGantt = () => {
         <CardContent>
           <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', pb: 3 }}>
             <Box 
+              data-gantt-content="true"
               ref={ganttContentRef} 
               sx={{ 
                 position: 'relative', 
@@ -738,7 +824,7 @@ const ImplementationGantt = () => {
                 if (phaseTasks.length === 0) return null;
                 
                 return (
-                  <Box key={phase} sx={{ position: 'relative', mb: 3 }}>
+                  <Box key={phase} className="phase-container" sx={{ position: 'relative', mb: 3 }}>
                     {/* Phase header background that spans full width - improved to be continuous */}
                     <Box 
                       sx={{ 
@@ -805,6 +891,7 @@ const ImplementationGantt = () => {
                       
                       return (
                         <Box 
+                          className="task-row"
                           key={task.id} 
                           sx={{ 
                             display: 'flex', 
