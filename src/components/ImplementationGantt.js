@@ -411,7 +411,7 @@ const ImplementationGantt = () => {
         const integrationStart = currentWeek + moduleDuration - integrationDuration;
         tasks.push({
           id: 'onboarding-integration',
-          name: 'Onboarding Integration',
+          name: 'Integration',
           phase: 'Execution',
           start: integrationStart,
           duration: integrationDuration,
@@ -465,88 +465,12 @@ const ImplementationGantt = () => {
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
     try {
-      // Set up options for landscape PDF with white backgrounds
-      const opt = {
-        margin: 0.25,
-        filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { 
-          scale: 1.5,
-          useCORS: true,
-          backgroundColor: '#ffffff',
-          windowWidth: document.documentElement.scrollWidth + 500, // Add extra width for TotalTalent tasks
-          width: document.documentElement.scrollWidth + 500,
-          logging: false,
-        },
-        jsPDF: { 
-          unit: 'in', 
-          format: [11, 8.5], // Explicitly set landscape dimensions
-          orientation: 'landscape',
-          compress: true
-        },
-        pagebreak: { 
-          mode: ['avoid-all', 'css', 'legacy'],
-          before: '#gantt-chart-container'
-        }
-      };
-      
-      // Hide export button and slider value temporarily
-      const exportButton = document.querySelector('.export-pdf-button');
-      const sliderValues = document.querySelectorAll('.MuiSlider-valueLabel');
-      
-      if (exportButton) {
-        exportButton.style.display = 'none';
-      }
-      
-      sliderValues.forEach(el => {
-        if (el) el.style.display = 'none';
-      });
-      
-      // Create a temporary white background div to prevent dark backgrounds
-      const whiteBackground = document.createElement('div');
-      whiteBackground.style.position = 'fixed';
-      whiteBackground.style.zIndex = '-1000';
-      whiteBackground.style.left = '0';
-      whiteBackground.style.top = '0';
-      whiteBackground.style.width = '100%';
-      whiteBackground.style.height = '100%';
-      whiteBackground.style.backgroundColor = '#ffffff';
-      document.body.appendChild(whiteBackground);
-      
-      // Export the PDF
-      html2pdf()
-        .from(document.body)
-        .set(opt)
-        .save()
-        .then(() => {
-          // Clean up and restore elements
-          document.body.removeChild(whiteBackground);
-          
-          if (exportButton) {
-            exportButton.style.display = '';
-          }
-          
-          sliderValues.forEach(el => {
-            if (el) el.style.display = '';
-          });
-        })
-        .catch((err) => {
-          console.error('Error generating PDF:', err);
-          document.body.removeChild(whiteBackground);
-          
-          // Restore elements
-          if (exportButton) {
-            exportButton.style.display = '';
-          }
-          
-          sliderValues.forEach(el => {
-            if (el) el.style.display = '';
-          });
-        });
+      // Simply trigger the browser print dialog which will give better results
+      window.print();
     } catch (error) {
       console.error('Error in PDF export:', error);
     }
-  }, [companyName]);
+  }, []);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
@@ -612,7 +536,7 @@ const ImplementationGantt = () => {
                 className="export-pdf-button"
                 sx={{ backgroundColor: colors.primary }}
               >
-                Export PDF
+                Print PDF
               </Button>
             </Box>
           }
@@ -763,7 +687,7 @@ const ImplementationGantt = () => {
           }
         />
         <CardContent>
-          <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', pb: 3 }}>
+          <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', overflowY: 'visible', pb: 3 }}>
             <Box 
               data-gantt-content="true"
               ref={ganttContentRef} 
