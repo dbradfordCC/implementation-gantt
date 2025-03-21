@@ -89,10 +89,26 @@ const ImplementationGantt = () => {
     const contentWidth = ganttContentRef.current.scrollWidth;
     
     if (contentWidth > containerWidth) {
-      const scale = containerWidth / contentWidth;
+      // Calculate scale to fit width
+      const scaleWidth = containerWidth / contentWidth;
+      
+      // Get content height and visible container height
+      const contentHeight = ganttContentRef.current.scrollHeight;
+      const containerHeight = window.innerHeight * 0.7; // Use 70% of viewport height as max
+      
+      // Determine if we need to scale for height as well
+      const scaleHeight = containerHeight / contentHeight;
+      
+      // Use the smaller scale to ensure everything fits
+      const scale = Math.min(scaleWidth, scaleHeight, 1); // Never scale up
+      
+      // Apply the scale
       ganttContentRef.current.style.transform = `scale(${scale})`;
       ganttContentRef.current.style.transformOrigin = 'left top';
-      ganttContainerRef.current.style.height = `${ganttContentRef.current.scrollHeight * scale}px`;
+      
+      // Set container height to show all content without scrolling
+      const newHeight = Math.min(contentHeight * scale, containerHeight);
+      ganttContainerRef.current.style.height = `${newHeight}px`;
     } else {
       ganttContentRef.current.style.transform = 'none';
       ganttContainerRef.current.style.height = 'auto';
@@ -109,8 +125,21 @@ const ImplementationGantt = () => {
       resizeObserver.observe(ganttContainerRef.current);
       adjustGanttScale();
       
+      // Also adjust when window is resized
+      const handleResize = () => {
+        adjustGanttScale();
+      };
+      
+      window.addEventListener('resize', handleResize);
+      
+      // Initial adjustment with a slight delay to ensure everything is rendered
+      setTimeout(() => {
+        adjustGanttScale();
+      }, 100);
+      
       return () => {
         resizeObserver.disconnect();
+        window.removeEventListener('resize', handleResize);
       };
     }
   }, [adjustGanttScale]);
@@ -441,7 +470,7 @@ const ImplementationGantt = () => {
         const integrationStart = currentWeek + moduleDuration - integrationDuration;
         tasks.push({
           id: 'onboarding-integration',
-          name: 'Integration',
+          name: 'Onboarding Integration',
           phase: 'Execution',
           start: integrationStart,
           duration: integrationDuration,
@@ -744,7 +773,7 @@ const ImplementationGantt = () => {
           }
         />
         <CardContent>
-          <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', pb: 3 }}>
+          <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', overflowY: 'hidden', pb: 3 }}>
             <Box 
               ref={ganttContentRef} 
               id="gantt-content-wrapper"
@@ -753,6 +782,7 @@ const ImplementationGantt = () => {
                 minWidth: '700px', 
                 transform: 'scale(1)',
                 transformOrigin: 'left top',
+                width: '100%',
                 '@media print': { 
                   maxWidth: '100vw',
                   transform: 'scale(1)',
