@@ -1,20 +1,4 @@
-// Effect to handle scaling the gantt chart to fit the container
-  useEffect(() => {
-    if (ganttContainerRef.current && ganttContentRef.current) {
-      const resizeObserver = new ResizeObserver(() => {
-        adjustGanttScale();
-      });
-      
-      resizeObserver.observe(ganttContainerRef.current);
-      
-      // Initial adjustment
-      adjustGanttScale();
-      
-      return () => {
-        resizeObserver.disconnect();
-      };
-    }
-  }, [adjustGanttScale]);import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { 
   Card, CardContent, CardHeader,
   Typography, Button, Slider, 
@@ -39,6 +23,10 @@ const ImplementationGantt = () => {
     white: '#FFFFFF',        // White
     lightGray: '#F5F5F5'     // Light gray for backgrounds
   };
+  
+  // Refs for scaling chart
+  const ganttContainerRef = useRef(null);
+  const ganttContentRef = useRef(null);
   
   // State variables
   const [employeeCount, setEmployeeCount] = useState(200);
@@ -94,10 +82,44 @@ const ImplementationGantt = () => {
     }
   };
 
-  // Refs for scaling chart
-  const ganttContainerRef = useRef(null);
-  const ganttContentRef = useRef(null);
-  
+  // Function to adjust gantt scale to fit container
+  const adjustGanttScale = useCallback(() => {
+    if (!ganttContainerRef.current || !ganttContentRef.current) return;
+    
+    const containerWidth = ganttContainerRef.current.clientWidth;
+    const contentWidth = ganttContentRef.current.scrollWidth;
+    
+    // Only scale if content is wider than container
+    if (contentWidth > containerWidth) {
+      const scale = containerWidth / contentWidth;
+      ganttContentRef.current.style.transform = `scale(${scale})`;
+      ganttContentRef.current.style.transformOrigin = 'left top';
+      // Adjust container height to account for scaling
+      ganttContainerRef.current.style.height = `${ganttContentRef.current.scrollHeight * scale}px`;
+    } else {
+      ganttContentRef.current.style.transform = 'none';
+      ganttContainerRef.current.style.height = 'auto';
+    }
+  }, []);
+
+  // Effect to handle scaling the gantt chart to fit the container
+  useEffect(() => {
+    if (ganttContainerRef.current && ganttContentRef.current) {
+      const resizeObserver = new ResizeObserver(() => {
+        adjustGanttScale();
+      });
+      
+      resizeObserver.observe(ganttContainerRef.current);
+      
+      // Initial adjustment
+      adjustGanttScale();
+      
+      return () => {
+        resizeObserver.disconnect();
+      };
+    }
+  }, [adjustGanttScale]);
+
   // Add print-specific styles
   useEffect(() => {
     // Create a style element for print styles
@@ -151,26 +173,6 @@ const ImplementationGantt = () => {
       moduleCheckIns: checkIns,
     });
   }, [employeeCount]);
-  
-  // Function to adjust gantt scale to fit container
-  const adjustGanttScale = useCallback(() => {
-    if (!ganttContainerRef.current || !ganttContentRef.current) return;
-    
-    const containerWidth = ganttContainerRef.current.clientWidth;
-    const contentWidth = ganttContentRef.current.scrollWidth;
-    
-    // Only scale if content is wider than container
-    if (contentWidth > containerWidth) {
-      const scale = containerWidth / contentWidth;
-      ganttContentRef.current.style.transform = `scale(${scale})`;
-      ganttContentRef.current.style.transformOrigin = 'left top';
-      // Adjust container height to account for scaling
-      ganttContainerRef.current.style.height = `${ganttContentRef.current.scrollHeight * scale}px`;
-    } else {
-      ganttContentRef.current.style.transform = 'none';
-      ganttContainerRef.current.style.height = 'auto';
-    }
-  }, []);
 
   // Calculate timeline based on employee count, tier, and product mix
   const timeline = useMemo(() => {
@@ -701,23 +703,7 @@ const ImplementationGantt = () => {
                 if (phaseTasks.length === 0) return null;
                 
                 return (
-                  <Box key={phase}>
-                    <Box 
-                      sx={{ 
-                        position: 'relative', // Changed from sticky to allow full width background
-                        width: '250px', // Increased from 200px to show full task names
-                        fontWeight: 'bold', 
-                        py: 1.5, 
-                        px: 1, 
-                        mb: 1, 
-                        zIndex: 10,
-                        backgroundColor: 'transparent', // Make transparent so the background shows through
-                        color: colors.dark
-                      }}
-                    >
-                      {phase}
-                    </Box>
-                    
+                  <Box key={phase} sx={{ position: 'relative', mb: 3 }}>
                     {/* Phase header background that spans full width - improved to be continuous */}
                     <Box 
                       sx={{ 
@@ -727,9 +713,28 @@ const ImplementationGantt = () => {
                         height: '48px', // Match height of phase header
                         backgroundColor: colors.lightGray,
                         zIndex: 1, // Lower z-index so it stays behind task names but is visible
-                        mt: -6 // Offset to align with header
                       }}
                     />
+                    
+                    <Box 
+                      sx={{ 
+                        position: 'relative', // Changed to allow full width background
+                        display: 'flex',
+                        py: 1.5,
+                        mb: 1,
+                        zIndex: 10,
+                      }}
+                    >
+                      <Box sx={{ 
+                        width: '250px', // Increased from 200px to show full task names
+                        fontWeight: 'bold',
+                        px: 1,
+                        zIndex: 10,
+                        color: colors.dark
+                      }}>
+                        {phase}
+                      </Box>
+                    </Box>
                     
                     {phaseTasks.map(task => {
                       // Determine if we should use a dotted border for self-paced tasks
