@@ -26,6 +26,7 @@ const ImplementationGantt = () => {
   
   // State variables
   const [employeeCount, setEmployeeCount] = useState(200);
+  const [companyName, setCompanyName] = useState('');
   const [tierInfo, setTierInfo] = useState({
     tier: 'Small Biz',
     package: 'ClearCare Pro',
@@ -298,13 +299,13 @@ const ImplementationGantt = () => {
         color: colors.secondaryDark // Dark yellow
       });
       
-      // Module testing (full implementation period)
+      // Module testing (starts after setup)
       tasks.push({
         id: `${moduleName.toLowerCase()}-testing`,
         name: 'Testing',
         phase: 'Execution',
-        start: currentWeek,
-        duration: testingDuration,
+        start: currentWeek + setupDuration, // Start after setup completes
+        duration: moduleDuration - setupDuration, // Adjusted duration
         color: colors.primaryLight // Light blue
       });
       
@@ -317,7 +318,7 @@ const ImplementationGantt = () => {
           phase: 'Execution',
           start: historyStart,
           duration: dataImportDuration,
-          color: colors.primaryLight // Light blue
+          color: colors.secondaryAltLight // Lighter purple
         });
       }
       
@@ -381,15 +382,18 @@ const ImplementationGantt = () => {
   const handleExportPDF = useCallback(() => {
     const element = document.getElementById('gantt-chart-container');
     const opt = {
-      margin: 1,
-      filename: 'implementation-gantt.pdf',
+      margin: 0.5,
+      filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
       image: { type: 'jpeg', quality: 0.98 },
       html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+      // Ensure content fits on the page
+      hotfixes: ['px_scaling'],
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'] }
     };
     
     html2pdf().set(opt).from(element).save();
-  }, []);
+  }, [companyName]);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
@@ -452,28 +456,43 @@ const ImplementationGantt = () => {
         />
         <CardContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-            <Box>
-              <Typography variant="subtitle1" gutterBottom>
-                Employee Count: {displayEmployeeCount}
-              </Typography>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                <TextField
-                  type="number"
-                  value={employeeCount}
-                  onChange={(e) => setEmployeeCount(Number(e.target.value))}
-                  inputProps={{ min: 1 }}
-                  sx={{ width: '100px' }}
-                />
-                <Box sx={{ flexGrow: 1 }}>
-                  <Slider
-                    min={1}
-                    max={4500}
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={7}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Employee Count: {displayEmployeeCount}
+                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <TextField
+                    type="number"
                     value={employeeCount}
-                    onChange={(_, value) => setEmployeeCount(value)}
+                    onChange={(e) => setEmployeeCount(Number(e.target.value))}
+                    inputProps={{ min: 1 }}
+                    sx={{ width: '100px' }}
                   />
+                  <Box sx={{ flexGrow: 1 }}>
+                    <Slider
+                      min={1}
+                      max={4500}
+                      value={employeeCount}
+                      onChange={(_, value) => setEmployeeCount(value)}
+                    />
+                  </Box>
                 </Box>
-              </Box>
-            </Box>
+              </Grid>
+              <Grid item xs={12} md={5}>
+                <Typography variant="subtitle1" gutterBottom>
+                  Company Name
+                </Typography>
+                <TextField
+                  fullWidth
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Enter company name"
+                  variant="outlined"
+                  size="small"
+                />
+              </Grid>
+            </Grid>
             
             <Grid container spacing={2}>
               <Grid item xs={6}>
@@ -575,13 +594,13 @@ const ImplementationGantt = () => {
         <CardHeader 
           title={
             <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-              Implementation Gantt Chart
+              {companyName ? `${companyName} - Implementation Gantt Chart` : 'Implementation Gantt Chart'}
             </Typography>
           }
         />
         <CardContent>
           <Box sx={{ overflowX: 'auto', pb: 3 }}>
-            <Box sx={{ position: 'relative', minWidth: '700px' }}>
+            <Box sx={{ position: 'relative', minWidth: '700px', maxWidth: '100%', '@media print': { maxWidth: '100vw' } }}>
               {/* Group by phase */}
               {['Initiation & Planning', 'Execution', 'Launch'].map(phase => {
                 const phaseTasks = timeline.filter(task => task.phase === phase);
@@ -617,6 +636,26 @@ const ImplementationGantt = () => {
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
                                      (task.duration >= 0.5 ? `${task.duration}w` : '');
+                                     
+                      // For Pro package, use lighter fills with darker borders for all but setup
+                      const isProPackage = tierInfo.package === 'ClearCare Pro';
+                      const isSetupTask = task.name === 'Setup' || task.name === 'Optional ClearCompany Setup Assistance';
+                      
+                      // Determine background and border colors
+                      let backgroundColor = task.color;
+                      let borderColor = `1px ${borderStyle} rgba(0,0,0,0.1)`;
+                      
+                      if (isProPackage && !isSetupTask && task.isSelfPaced) {
+                        // Create a lighter version of the color for fill
+                        const lightColor = task.color === colors.primaryDark ? 'rgba(37, 70, 119, 0.15)' :
+                                         task.color === colors.secondaryAlt ? 'rgba(130, 34, 117, 0.15)' :
+                                         task.color === colors.secondaryDark ? 'rgba(230, 230, 81, 0.15)' :
+                                         task.color === colors.primaryLight ? 'rgba(85, 186, 234, 0.15)' :
+                                         'rgba(255, 255, 255, 0.15)';
+                                         
+                        backgroundColor = lightColor;
+                        borderColor = `1px ${borderStyle} ${task.color}`;
+                      }
                       
                       return (
                         <Box 
@@ -655,10 +694,11 @@ const ImplementationGantt = () => {
                                 fontSize: '0.875rem',
                                 left: task.isSelfPaced ? 0 : `${task.start * 24}px`,
                                 width: barWidth,
-                                backgroundColor: task.color,
+                                backgroundColor: backgroundColor,
                                 height: '32px',
-                                color: task.color === colors.secondary || task.color === colors.secondaryDark ? '#254677' : '#FFFFFF',
-                                border: `1px ${borderStyle} rgba(0,0,0,0.1)`
+                                color: (task.color === colors.secondary || task.color === colors.secondaryDark || 
+                                       (isProPackage && !isSetupTask && task.isSelfPaced)) ? '#254677' : '#FFFFFF',
+                                border: borderColor
                               }}
                             >
                               {barText}
