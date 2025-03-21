@@ -7,7 +7,6 @@ import {
 } from '@mui/material';
 import { Download } from 'lucide-react';
 import html2pdf from 'html2pdf.js';
-import { jsPDF } from 'jspdf';
 
 const ImplementationGantt = () => {
   // Color scheme based on provided brand colors
@@ -469,49 +468,38 @@ const ImplementationGantt = () => {
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
+    const element = document.getElementById('gantt-chart-container');
     const configElement = document.getElementById('config-card');
-    const ganttElement = document.getElementById('gantt-chart-container');
     
-    // Set up PDF options
-    const opt = {
-      margin: [0.25, 0.25], // Smaller margins [top/bottom, left/right]
-      filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
-      image: { type: 'jpeg', quality: 0.95 },
-      html2canvas: { 
-        scale: 1.5, 
-        useCORS: true,
-        logging: false,
-        letterRendering: true
-      },
-      jsPDF: { 
-        unit: 'in', 
-        format: 'letter', 
-        orientation: 'landscape',
-        compress: true 
-      }
-    };
-    
-    // First create a PDF document
-    const pdf = new window.jspdf.jsPDF(opt.jsPDF);
-    
-    // Create a promise chain to capture both elements sequentially
+    // First export configuration card
     html2pdf()
       .from(configElement)
-      .set(opt)
-      .outputPdf('datauristring')
-      .then((configPdfString) => {
-        // First page is done, now add second page
+      .set({
+        margin: 0.25,
+        filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
+        image: { type: 'jpeg', quality: 0.95 },
+        html2canvas: { scale: 1.5 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+        pagebreak: { mode: ['avoid-all'] }
+      })
+      .toPdf()
+      .get('pdf')
+      .then((pdf) => {
+        // Add a new page
         pdf.addPage();
         
-        // Now capture the Gantt chart
+        // Then export Gantt chart to the new page
         return html2pdf()
-          .from(ganttElement)
-          .set(opt)
-          .outputPdf('datauristring');
-      })
-      .then((ganttPdfString) => {
-        // Now save the complete PDF
-        pdf.save(opt.filename);
+          .from(element)
+          .set({
+            margin: 0.25,
+            html2canvas: { scale: 1.5 },
+            jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+          })
+          .toContainer()
+          .toCanvas()
+          .toPdf(pdf)
+          .save();
       });
   }, [companyName]);
 
@@ -755,6 +743,7 @@ const ImplementationGantt = () => {
                         position: 'absolute',
                         left: 0,
                         right: 0,
+                        width: '100%', // Ensure full width
                         height: '48px', // Match height of phase header
                         backgroundColor: colors.lightGray,
                         zIndex: 1, // Lower z-index so it stays behind task names but is visible
