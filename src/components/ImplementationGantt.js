@@ -468,39 +468,30 @@ const ImplementationGantt = () => {
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
-    const element = document.getElementById('gantt-chart-container');
-    const configElement = document.getElementById('config-card');
+    // Get both elements
+    const fullContent = document.querySelector('#root'); // Capture entire content
     
-    // First export configuration card
+    // Setup options
+    const options = {
+      margin: 0.5,
+      filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { 
+        scale: 1.5,
+        useCORS: true,
+        letterRendering: true,
+        width: fullContent.scrollWidth + 100, // Ensure we capture full width
+        windowWidth: fullContent.scrollWidth + 100
+      },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+      pagebreak: { mode: ['avoid-all', 'css', 'legacy'], before: ['#gantt-chart-container'] }
+    };
+    
+    // Export the full content with proper page breaks
     html2pdf()
-      .from(configElement)
-      .set({
-        margin: 0.25,
-        filename: companyName ? `${companyName.trim()}-implementation-gantt.pdf` : 'implementation-gantt.pdf',
-        image: { type: 'jpeg', quality: 0.95 },
-        html2canvas: { scale: 1.5 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
-        pagebreak: { mode: ['avoid-all'] }
-      })
-      .toPdf()
-      .get('pdf')
-      .then((pdf) => {
-        // Add a new page
-        pdf.addPage();
-        
-        // Then export Gantt chart to the new page
-        return html2pdf()
-          .from(element)
-          .set({
-            margin: 0.25,
-            html2canvas: { scale: 1.5 },
-            jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
-          })
-          .toContainer()
-          .toCanvas()
-          .toPdf(pdf)
-          .save();
-      });
+      .from(fullContent)
+      .set(options)
+      .save();
   }, [companyName]);
 
   // Calculate total implementation time
@@ -760,7 +751,7 @@ const ImplementationGantt = () => {
                       }}
                     >
                       <Box sx={{ 
-                        width: '250px', // Increased from 200px to show full task names
+                        width: '260px', // Increased to match task name width
                         fontWeight: 'bold',
                         px: 1,
                         zIndex: 10,
@@ -775,7 +766,7 @@ const ImplementationGantt = () => {
                       const borderStyle = task.isSelfPaced ? 'dashed' : 'solid';
                       
                       // Determine width for self-paced tasks (full width) vs regular tasks
-                      const barWidth = task.isSelfPaced ? 'calc(100% - 250px)' : `${task.duration * 24}px`;
+                      const barWidth = task.isSelfPaced ? 'calc(100% - 260px)' : `${task.duration * 24}px`;
                       
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
@@ -815,14 +806,14 @@ const ImplementationGantt = () => {
                             sx={{ 
                               position: 'sticky', 
                               left: 0, 
-                              width: '250px', // Increased from 200px
+                              width: '260px', // Increased width to show full task names
                               backgroundColor: 'white', 
                               zIndex: 10, 
                               px: 1,
                               fontSize: '0.9rem', // Slightly smaller text to fit longer names
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap',
+                              overflow: 'visible', // Changed from 'hidden' to prevent truncation
+                              whiteSpace: 'normal', // Changed from 'nowrap' to allow wrapping
+                              lineHeight: '1.2',
                               color: colors.dark
                             }}
                           >
