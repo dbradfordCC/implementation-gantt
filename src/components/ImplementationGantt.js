@@ -89,30 +89,15 @@ const ImplementationGantt = () => {
     const containerWidth = ganttContainerRef.current.clientWidth;
     const contentWidth = ganttContentRef.current.scrollWidth;
     
-    // Only scale if content is wider than container
     if (contentWidth > containerWidth) {
       const scale = containerWidth / contentWidth;
       ganttContentRef.current.style.transform = `scale(${scale})`;
       ganttContentRef.current.style.transformOrigin = 'left top';
-      // Adjust container height to account for scaling
-      const newHeight = Math.min(ganttContentRef.current.scrollHeight * scale * 1.05, window.innerHeight * 0.7);
-      ganttContainerRef.current.style.height = `${newHeight}px`;
+      ganttContainerRef.current.style.height = `${ganttContentRef.current.scrollHeight * scale}px`;
     } else {
       ganttContentRef.current.style.transform = 'none';
       ganttContainerRef.current.style.height = 'auto';
     }
-    
-    // Force a small delay then readjust (helps with complex layouts)
-    setTimeout(() => {
-      if (ganttContainerRef.current && ganttContentRef.current) {
-        const containerWidth = ganttContainerRef.current.clientWidth;
-        const contentWidth = ganttContentRef.current.scrollWidth;
-        if (contentWidth > containerWidth) {
-          const scale = containerWidth / contentWidth;
-          ganttContentRef.current.style.transform = `scale(${scale})`;
-        }
-      }
-    }, 100);
   }, []);
 
   // Effect to handle scaling the gantt chart to fit the container
@@ -123,20 +108,13 @@ const ImplementationGantt = () => {
       });
       
       resizeObserver.observe(ganttContainerRef.current);
-      
-      // Initial adjustment
       adjustGanttScale();
-      
-      // Also adjust when timeline changes (for Max/TotalTalent cases)
-      if (timeline.length > 0) {
-        adjustGanttScale();
-      }
       
       return () => {
         resizeObserver.disconnect();
       };
     }
-  }, [adjustGanttScale, timeline]);
+  }, [adjustGanttScale]);
 
   // Add specialized print styles
   useEffect(() => {
@@ -486,63 +464,27 @@ const ImplementationGantt = () => {
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
-    // Get both elements
-    const fullContent = document.body; // Capture entire document body for better printing
-    
-    // Setup options for full page printing
-    const options = {
-      margin: [0.25, 0.3], // Smaller margins [top/bottom, left/right] to maximize content area
-      filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
-      image: { type: 'jpeg', quality: 0.99 },
-      html2canvas: { 
-        scale: 2, // Higher scale for better quality
-        useCORS: true,
-        letterRendering: true,
-        width: document.documentElement.scrollWidth, // Capture full width
-        height: document.documentElement.scrollHeight, // Capture full height
-        x: 0,
-        y: 0,
-        scrollX: 0,
-        scrollY: 0,
-        windowWidth: Math.max(document.documentElement.scrollWidth, window.innerWidth), // Ensure all content is captured
-        logging: false
-      },
-      jsPDF: { 
-        unit: 'in', 
-        format: 'letter', 
-        orientation: 'landscape',
-        hotfixes: ["px_scaling"]
-      },
-      pagebreak: { 
-        mode: ['avoid-all', 'css', 'legacy'], 
-        before: ['#gantt-chart-container'] 
+    try {
+      const element = document.body;
+      if (!element) {
+        console.error('Could not find element for PDF export');
+        return;
       }
-    };
-    
-    // First temporarily adjust Gantt chart to ensure it shows all content
-    const ganttContent = document.getElementById('gantt-content-wrapper');
-    if (ganttContent) {
-      ganttContent.style.transform = 'none'; // Remove scaling to capture full content
-      ganttContent.style.width = 'auto';
-      ganttContent.style.maxWidth = 'none';
+      
+      const opt = {
+        margin: 0.5,
+        filename: companyName ? `${companyName.trim()} - Implementation Gantt Chart.pdf` : 'Implementation Gantt Chart.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 1.5 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' },
+        pagebreak: { before: '#gantt-chart-container' }
+      };
+      
+      html2pdf().from(element).set(opt).save();
+    } catch (error) {
+      console.error('Error in PDF export:', error);
     }
-    
-    // Export the full content with proper page breaks
-    html2pdf()
-      .from(fullContent)
-      .set(options)
-      .toPdf()
-      .get('pdf')
-      .then((pdf) => {
-        // Save the PDF
-        pdf.save(options.filename);
-        
-        // Restore original scaling
-        if (ganttContainerRef.current && ganttContentRef.current) {
-          adjustGanttScale();
-        }
-      });
-  }, [companyName, adjustGanttScale]);
+  }, [companyName]);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
@@ -759,7 +701,6 @@ const ImplementationGantt = () => {
           <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', pb: 3 }}>
             <Box 
               ref={ganttContentRef} 
-              id="gantt-content-wrapper"
               sx={{ 
                 position: 'relative', 
                 minWidth: '700px', 
