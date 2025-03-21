@@ -1,48 +1,4 @@
-<Box key={phase} className="phase-container" sx={{ position: 'relative', mb: 3 }}>
-                    {/* Phase header background that spans full width - improved to be continuous */}
-                    <Box 
-                      className="phase-header-bg"
-                      sx={{ 
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        width: '100%', // Ensure full width
-                        height: '48px', // Match height of phase header
-                        backgroundColor: colors.lightGray,
-                        zIndex: 1, // Lower z-index so it stays behind task names but is visible
-                      }}
-                    />
-                    
-                    <Box 
-                      sx={{ 
-                        position: 'relative', // Changed to allow full width background
-                        display: 'flex',
-                        py: 1.5,
-                        mb: 1,
-                        zIndex: 10,
-                      }}
-                    >
-                      <Box sx={{ 
-                        width: '260px', // Increased to match task name width
-                        fontWeight: 'bold',
-                        px: 1,
-                        zIndex: 10,
-                        color: colors.dark
-                      }}>
-                        {phase}
-                      </Box>
-                    </Box>
-                    
-                    {phaseTasks.map(task => {
-                      // Determine if we should use a dotted border for self-paced tasks
-                      const borderStyle = task.isSelfPaced ? 'dashed' : 'solid';
-                      
-                      // Determine width for self-paced tasks (full width) vs regular tasks
-                      const barWidth = task.isSelfPaced ? 'calc(100% - 260px)' : `${task.duration * 24}px`;
-                      
-                      // Determine what text to display inside the bar
-                      const barText = task.isSelfPaced ? task.selfPacedLabel : 
-                                     (task.duration >= 0.5 ? `${task.duration}w` : '');
+(task.duration >= 0.5 ? `${task.duration}w` : '');
                                      
                       // For Pro package, use lighter fills with darker borders for all but setup
                       const isProPackage = tierInfo.package === 'ClearCare Pro';
