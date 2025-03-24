@@ -172,7 +172,7 @@ const ImplementationGantt = () => {
       @media print {
         @page {
           size: 11in 8.5in landscape;
-          margin: 0.1in;
+          margin: 0in !important; /* Remove all margins */
         }
         
         /* Hide unwanted elements during printing */
@@ -186,6 +186,7 @@ const ImplementationGantt = () => {
           color-adjust: exact !important;
           width: 100%;
           max-width: 100%;
+          overflow-x: visible !important;
         }
         
         #config-card {
@@ -200,27 +201,28 @@ const ImplementationGantt = () => {
           padding: 0;
           max-height: 8in;
           overflow: hidden;
-          width: 100% !important;
-          max-width: 100% !important;
+          width: 100vw !important;
+          max-width: 100vw !important;
         }
         
         .MuiCardContent-root {
-          padding: 10px !important;
+          padding: 8px 4px !important;
           width: 100% !important;
           max-width: 100% !important;
         }
         
         .MuiCardHeader-root {
-          padding: 10px !important;
+          padding: 8px 4px !important;
         }
         
-        /* Ensure gantt chart displays correctly during printing */
+        /* Scale down to fit better */
         #gantt-content-wrapper {
-          transform: none !important;
-          width: 100% !important;
-          max-width: 100% !important;
+          transform: scale(0.9) !important;
+          transform-origin: left top !important;
+          width: 100vw !important;
+          max-width: 100vw !important;
           margin-right: 0 !important;
-          padding-right: 150px !important;
+          padding-right: 0 !important;
         }
         
         /* Make phase headers stretch full width in print */
@@ -231,16 +233,27 @@ const ImplementationGantt = () => {
           right: 0 !important;
         }
         
+        /* Reduce width of task name column to give more space to bars */
+        .task-name-column {
+          width: 200px !important;
+        }
+        
         /* Ensure task bars take full width in print */
         .task-bar-container {
-          width: calc(100% - 260px) !important;
-          padding-right: 150px !important; /* Increased padding to prevent last tasks from being cut off */
+          width: calc(100% - 200px) !important;
+          padding-right: 0 !important;
         }
         
         /* Adjust task bar widths in print */
         .task-bar {
           width: var(--task-width) !important;
-          max-width: calc(90% - 150px) !important; /* Ensure tasks don't extend beyond container */
+          max-width: calc(80% - 20px) !important;
+        }
+        
+        /* Make launch phase bars more visible */
+        .launch-phase-task .task-bar {
+          width: calc(var(--task-width) * 1.4) !important;
+          max-width: calc(70% - 10px) !important;
         }
         
         ${!companyName ? '' : `
@@ -670,9 +683,7 @@ const ImplementationGantt = () => {
     });
     
     return grouped;
-  }, [timeline]);
-
-  return (
+  }, [timeline]);return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333' }}>
       {/* Logo centered at the top */}
       <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: 2 }}>
@@ -853,8 +864,11 @@ const ImplementationGantt = () => {
               pb: 3,
               width: '100%', 
               '@media print': {
-                width: '100%',
-                marginRight: '0'
+                width: '100vw',
+                maxWidth: '100vw',
+                margin: 0,
+                padding: 0,
+                overflow: 'visible'
               }
             }}
           >
@@ -867,12 +881,13 @@ const ImplementationGantt = () => {
                 transform: 'scale(1)',
                 transformOrigin: 'left top',
                 width: '100%',
-                paddingRight: '100px', /* Add padding to prevent cutting off */
+                paddingRight: '50px',
                 '@media print': { 
-                  width: '100% !important',
-                  maxWidth: '100% !important',
-                  transform: 'scale(1)',
-                  paddingRight: '150px', /* More padding in print mode */
+                  width: '100vw !important',
+                  maxWidth: '100vw !important',
+                  transform: 'scale(0.9) !important',
+                  transformOrigin: 'left top !important',
+                  paddingRight: '0'
                 }
               }}
             >
@@ -918,7 +933,10 @@ const ImplementationGantt = () => {
                         fontWeight: 'bold',
                         px: 1,
                         zIndex: 10,
-                        color: colors.dark
+                        color: colors.dark,
+                        '@media print': {
+                          width: '200px !important'
+                        }
                       }}>
                         {phase}
                       </Box>
@@ -932,8 +950,12 @@ const ImplementationGantt = () => {
                       const taskWidth = getTaskWidth(task.duration, task.isSelfPaced);
                       
                       // Create a CSS variable to use for the task width in print mode
-                      const taskWidthVar = task.isSelfPaced ? '90%' : 
-                                          (totalWeeks > 0 ? `${(task.duration / totalWeeks) * 85}%` : `${task.duration * 24}px`);
+                      const taskWidthVar = task.isSelfPaced ? '80%' : 
+                                          (totalWeeks > 0 ? 
+                                            task.phase === 'Launch' ? 
+                                              `${(task.duration / totalWeeks) * 150}%` : 
+                                              `${(task.duration / totalWeeks) * 75}%` 
+                                            : `${task.duration * 24}px`);
                       
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
@@ -970,6 +992,7 @@ const ImplementationGantt = () => {
                           }}
                         >
                           <Box 
+                            className="task-name-column"
                             sx={{ 
                               position: 'sticky', 
                               left: 0, 
@@ -981,13 +1004,16 @@ const ImplementationGantt = () => {
                               overflow: 'visible', // Changed from 'hidden' to prevent truncation
                               whiteSpace: 'normal', // Changed from 'nowrap' to allow wrapping
                               lineHeight: '1.2',
-                              color: colors.dark
+                              color: colors.dark,
+                              '@media print': {
+                                width: '200px !important'
+                              }
                             }}
                           >
                             {task.name}
                           </Box>
                           <Box 
-                            className="task-bar-container"
+                            className={`task-bar-container ${task.phase === 'Launch' ? 'launch-phase-task' : ''}`}
                             sx={{ 
                               flexGrow: 1, 
                               position: 'relative', 
@@ -995,7 +1021,8 @@ const ImplementationGantt = () => {
                               zIndex: 5,
                               paddingRight: { xs: '40px', md: '60px' },
                               '@media print': {
-                                paddingRight: '150px'
+                                paddingRight: '0 !important',
+                                width: 'calc(100% - 200px) !important'
                               }
                             }}
                           >
@@ -1010,7 +1037,7 @@ const ImplementationGantt = () => {
                                 fontSize: '0.875rem',
                                 left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
                                 width: taskWidth,
-                                '--task-width': taskWidthVar, // CSS variable for print styles
+                                '--task-width': taskWidthVar,
                                 backgroundColor: backgroundColor,
                                 height: '32px',
                                 color: (task.color === colors.secondary || task.color === colors.secondaryDark || 
@@ -1021,8 +1048,11 @@ const ImplementationGantt = () => {
                                 whiteSpace: 'nowrap',
                                 '@media print': {
                                   width: `var(--task-width) !important`,
-                                  left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
-                                  maxWidth: 'calc(90% - 150px)'
+                                  left: task.phase === 'Launch' ? 
+                                    `${Math.max(0, task.start - 2) * (totalTaskWidth / totalWeeks)}px` : 
+                                    `${task.start * (totalTaskWidth / totalWeeks)}px`,
+                                  maxWidth: task.phase === 'Launch' ? 
+                                    'calc(70% - 10px)' : 'calc(80% - 20px)'
                                 }
                               }}
                             >
