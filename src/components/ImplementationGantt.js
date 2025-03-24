@@ -172,7 +172,7 @@ const ImplementationGantt = () => {
       @media print {
         @page {
           size: 11in 8.5in landscape;
-          margin: 0.15in;
+          margin: 0.1in;
         }
         
         /* Hide unwanted elements during printing */
@@ -184,6 +184,8 @@ const ImplementationGantt = () => {
           -webkit-print-color-adjust: exact !important;
           print-color-adjust: exact !important;
           color-adjust: exact !important;
+          width: 100%;
+          max-width: 100%;
         }
         
         #config-card {
@@ -198,10 +200,14 @@ const ImplementationGantt = () => {
           padding: 0;
           max-height: 8in;
           overflow: hidden;
+          width: 100% !important;
+          max-width: 100% !important;
         }
         
         .MuiCardContent-root {
           padding: 10px !important;
+          width: 100% !important;
+          max-width: 100% !important;
         }
         
         .MuiCardHeader-root {
@@ -211,26 +217,30 @@ const ImplementationGantt = () => {
         /* Ensure gantt chart displays correctly during printing */
         #gantt-content-wrapper {
           transform: none !important;
-          width: 95% !important;
-          max-width: none !important;
-          margin-right: 30px !important; /* Add margin to prevent cutting off */
+          width: 100% !important;
+          max-width: 100% !important;
+          margin-right: 0 !important;
+          padding-right: 150px !important;
         }
         
         /* Make phase headers stretch full width in print */
         .phase-header-bg {
-          width: 100% !important;
+          width: 100vw !important;
+          max-width: 100vw !important;
+          left: 0 !important;
+          right: 0 !important;
         }
         
         /* Ensure task bars take full width in print */
         .task-bar-container {
           width: calc(100% - 260px) !important;
-          padding-right: 80px !important; /* Add padding to prevent last tasks from being cut off */
+          padding-right: 150px !important; /* Increased padding to prevent last tasks from being cut off */
         }
         
         /* Adjust task bar widths in print */
         .task-bar {
           width: var(--task-width) !important;
-          max-width: calc(95% - 80px) !important; /* Ensure tasks don't extend beyond container */
+          max-width: calc(90% - 150px) !important; /* Ensure tasks don't extend beyond container */
         }
         
         ${!companyName ? '' : `
@@ -843,8 +853,8 @@ const ImplementationGantt = () => {
               pb: 3,
               width: '100%', 
               '@media print': {
-                width: '95%',
-                marginRight: '30px'
+                width: '100%',
+                marginRight: '0'
               }
             }}
           >
@@ -857,11 +867,12 @@ const ImplementationGantt = () => {
                 transform: 'scale(1)',
                 transformOrigin: 'left top',
                 width: '100%',
-                paddingRight: '75px', /* Add padding to prevent cutting off */
+                paddingRight: '100px', /* Add padding to prevent cutting off */
                 '@media print': { 
-                  maxWidth: '95%',
+                  width: '100% !important',
+                  maxWidth: '100% !important',
                   transform: 'scale(1)',
-                  paddingRight: '100px', /* More padding in print mode */
+                  paddingRight: '150px', /* More padding in print mode */
                 }
               }}
             >
@@ -878,13 +889,18 @@ const ImplementationGantt = () => {
                       className="phase-header-bg"
                       sx={{ 
                         position: 'absolute',
-                        left: 0,position: 'absolute',
                         left: 0,
                         right: 0,
                         width: '100%', // Full width
                         height: '48px',
                         backgroundColor: colors.lightGray,
                         zIndex: 1,
+                        '@media print': {
+                          width: '100vw !important',
+                          maxWidth: '100vw !important',
+                          left: 0,
+                          right: 0
+                        }
                       }}
                     />
                     
@@ -916,8 +932,8 @@ const ImplementationGantt = () => {
                       const taskWidth = getTaskWidth(task.duration, task.isSelfPaced);
                       
                       // Create a CSS variable to use for the task width in print mode
-                      const taskWidthVar = task.isSelfPaced ? '95%' : 
-                                          (totalWeeks > 0 ? `${(task.duration / totalWeeks) * 90}%` : `${task.duration * 24}px`);
+                      const taskWidthVar = task.isSelfPaced ? '90%' : 
+                                          (totalWeeks > 0 ? `${(task.duration / totalWeeks) * 85}%` : `${task.duration * 24}px`);
                       
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
@@ -977,9 +993,9 @@ const ImplementationGantt = () => {
                               position: 'relative', 
                               height: '32px',
                               zIndex: 5,
-                              paddingRight: { xs: '0px', md: '30px' },
+                              paddingRight: { xs: '40px', md: '60px' },
                               '@media print': {
-                                paddingRight: '80px'
+                                paddingRight: '150px'
                               }
                             }}
                           >
@@ -1006,7 +1022,7 @@ const ImplementationGantt = () => {
                                 '@media print': {
                                   width: `var(--task-width) !important`,
                                   left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
-                                  maxWidth: 'calc(95% - 80px)'
+                                  maxWidth: 'calc(90% - 150px)'
                                 }
                               }}
                             >
