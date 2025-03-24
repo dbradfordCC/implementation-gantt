@@ -985,7 +985,7 @@ const ImplementationGantt = () => {
                                 whiteSpace: 'nowrap',
                                 '@media print': {
                                   width: `var(--task-width) !important`,
-                                  left: task.isSelfPaced ? 0 : `calc((${task.start} / ${totalWeeks}) * (100% - 260px))`
+                                  left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`
                                 }
                               }}
                             >
