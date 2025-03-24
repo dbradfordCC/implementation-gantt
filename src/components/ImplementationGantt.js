@@ -36,6 +36,7 @@ const ImplementationGantt = () => {
     moduleCheckIns: 0,
   });
   const [selectedProduct, setSelectedProduct] = useState('ClearRecruit');
+  const [totalTaskWidth, setTotalTaskWidth] = useState(0);
 
   // Define product mixes and their modules
   const productMixes = {
@@ -144,6 +145,25 @@ const ImplementationGantt = () => {
     }
   }, [adjustGanttScale]);
 
+  // Calculate content area width after initial render
+  useEffect(() => {
+    if (ganttContainerRef.current) {
+      const calculateTaskAreaWidth = () => {
+        const containerWidth = ganttContainerRef.current.clientWidth;
+        // Subtract the width of the task name column (260px)
+        const availableWidth = containerWidth - 260;
+        setTotalTaskWidth(availableWidth);
+      };
+
+      calculateTaskAreaWidth();
+      window.addEventListener('resize', calculateTaskAreaWidth);
+      
+      return () => {
+        window.removeEventListener('resize', calculateTaskAreaWidth);
+      };
+    }
+  }, []);
+
   // Add specialized print styles
   useEffect(() => {
     // Create a style element for print styles
@@ -195,7 +215,21 @@ const ImplementationGantt = () => {
           max-width: none !important;
         }
         
-        /* Optional: Add company name as header if not already present */
+        /* Make phase headers stretch full width in print */
+        .phase-header-bg {
+          width: 100% !important;
+        }
+        
+        /* Ensure task bars take full width in print */
+        .task-bar-container {
+          width: calc(100% - 260px) !important;
+        }
+        
+        /* Adjust task bar widths in print */
+        .task-bar {
+          width: var(--task-width) !important;
+        }
+        
         ${!companyName ? '' : `
           body.printing-pdf::before {
             content: "${companyName.trim()} - Implementation Gantt Chart";
@@ -600,6 +634,31 @@ const ImplementationGantt = () => {
     return employeeCount >= 4500 ? '4,500+' : employeeCount;
   }, [employeeCount]);
 
+  // Calculate the task width scaling factor
+  const getTaskWidth = useCallback((taskDuration, isSelfPaced) => {
+    if (isSelfPaced) {
+      return '100%'; // Full width for self-paced tasks
+    }
+    
+    if (totalWeeks <= 0 || !totalTaskWidth) return `${taskDuration * 24}px`;
+    
+    // Calculate proportional width based on total timeline and container width
+    const widthPerWeek = totalTaskWidth / totalWeeks;
+    return `${taskDuration * widthPerWeek}px`;
+  }, [totalWeeks, totalTaskWidth]);
+
+  // Group tasks by phase
+  const tasksByPhase = useMemo(() => {
+    const grouped = {};
+    const phases = ['Initiation & Planning', 'Execution', 'Launch'];
+    
+    phases.forEach(phase => {
+      grouped[phase] = timeline.filter(task => task.phase === phase);
+    });
+    
+    return grouped;
+  }, [timeline]);
+
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333' }}>
       {/* Logo centered at the top */}
@@ -791,28 +850,29 @@ const ImplementationGantt = () => {
             >
               {/* Group by phase */}
               {['Initiation & Planning', 'Execution', 'Launch'].map(phase => {
-                const phaseTasks = timeline.filter(task => task.phase === phase);
+                const phaseTasks = tasksByPhase[phase];
                 
                 if (phaseTasks.length === 0) return null;
                 
                 return (
                   <Box key={phase} sx={{ position: 'relative', mb: 3 }}>
-                    {/* Phase header background that spans full width - improved to be continuous */}
+                    {/* Phase header background that spans full width */}
                     <Box 
+                      className="phase-header-bg"
                       sx={{ 
                         position: 'absolute',
                         left: 0,
                         right: 0,
-                        width: '100%', // Ensure full width
-                        height: '48px', // Match height of phase header
+                        width: '100%', // Full width
+                        height: '48px',
                         backgroundColor: colors.lightGray,
-                        zIndex: 1, // Lower z-index so it stays behind task names but is visible
+                        zIndex: 1,
                       }}
                     />
                     
                     <Box 
                       sx={{ 
-                        position: 'relative', // Changed to allow full width background
+                        position: 'relative',
                         display: 'flex',
                         py: 1.5,
                         mb: 1,
@@ -820,7 +880,9 @@ const ImplementationGantt = () => {
                       }}
                     >
                       <Box sx={{ 
-                        width: '260px', // Increased to match task name width
+                        width: '260px',
+                        fontWeight: 'bold',
+                        px: 1,width: '260px',
                         fontWeight: 'bold',
                         px: 1,
                         zIndex: 10,
@@ -834,8 +896,12 @@ const ImplementationGantt = () => {
                       // Determine if we should use a dotted border for self-paced tasks
                       const borderStyle = task.isSelfPaced ? 'dashed' : 'solid';
                       
-                      // Determine width for self-paced tasks (full width) vs regular tasks
-                      const barWidth = task.isSelfPaced ? 'calc(100% - 260px)' : `${task.duration * 24}px`;
+                      // Calculate dynamic task width based on the total timeline width
+                      const taskWidth = getTaskWidth(task.duration, task.isSelfPaced);
+                      
+                      // Create a CSS variable to use for the task width in print mode
+                      const taskWidthVar = task.isSelfPaced ? '100%' : 
+                                          (totalWeeks > 0 ? `${(task.duration / totalWeeks) * 100}%` : `${task.duration * 24}px`);
                       
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
@@ -875,7 +941,7 @@ const ImplementationGantt = () => {
                             sx={{ 
                               position: 'sticky', 
                               left: 0, 
-                              width: '260px', // Increased width to show full task names
+                              width: '260px', // Fixed width for task names
                               backgroundColor: 'white', 
                               zIndex: 10, 
                               px: 1,
@@ -888,8 +954,17 @@ const ImplementationGantt = () => {
                           >
                             {task.name}
                           </Box>
-                          <Box sx={{ flexGrow: 1, position: 'relative', height: '32px' }}>
+                          <Box 
+                            className="task-bar-container"
+                            sx={{ 
+                              flexGrow: 1, 
+                              position: 'relative', 
+                              height: '32px',
+                              zIndex: 5
+                            }}
+                          >
                             <Box 
+                              className="task-bar"
                               sx={{ 
                                 position: 'absolute', 
                                 borderRadius: '4px', 
@@ -897,13 +972,21 @@ const ImplementationGantt = () => {
                                 alignItems: 'center', 
                                 justifyContent: 'center', 
                                 fontSize: '0.875rem',
-                                left: task.isSelfPaced ? 0 : `${task.start * 24}px`,
-                                width: barWidth,
+                                left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
+                                width: taskWidth,
+                                '--task-width': taskWidthVar, // CSS variable for print styles
                                 backgroundColor: backgroundColor,
                                 height: '32px',
                                 color: (task.color === colors.secondary || task.color === colors.secondaryDark || 
                                        (isProPackage && !isSetupTask && task.isSelfPaced)) ? '#254677' : '#FFFFFF',
-                                border: borderColor
+                                border: borderColor,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                '@media print': {
+                                  width: `var(--task-width) !important`,
+                                  left: task.isSelfPaced ? 0 : `calc((${task.start} / ${totalWeeks}) * (100% - 260px))`
+                                }
                               }}
                             >
                               {barText}
