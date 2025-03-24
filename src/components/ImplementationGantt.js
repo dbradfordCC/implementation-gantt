@@ -172,7 +172,7 @@ const ImplementationGantt = () => {
       @media print {
         @page {
           size: 11in 8.5in landscape;
-          margin: 0.25in;
+          margin: 0.15in;
         }
         
         /* Hide unwanted elements during printing */
@@ -211,8 +211,9 @@ const ImplementationGantt = () => {
         /* Ensure gantt chart displays correctly during printing */
         #gantt-content-wrapper {
           transform: none !important;
-          width: 100% !important;
+          width: 95% !important;
           max-width: none !important;
+          margin-right: 30px !important; /* Add margin to prevent cutting off */
         }
         
         /* Make phase headers stretch full width in print */
@@ -223,11 +224,13 @@ const ImplementationGantt = () => {
         /* Ensure task bars take full width in print */
         .task-bar-container {
           width: calc(100% - 260px) !important;
+          padding-right: 80px !important; /* Add padding to prevent last tasks from being cut off */
         }
         
         /* Adjust task bar widths in print */
         .task-bar {
           width: var(--task-width) !important;
+          max-width: calc(95% - 80px) !important; /* Ensure tasks don't extend beyond container */
         }
         
         ${!companyName ? '' : `
@@ -832,7 +835,19 @@ const ImplementationGantt = () => {
           }
         />
         <CardContent>
-          <Box ref={ganttContainerRef} sx={{ overflowX: 'hidden', overflowY: 'hidden', pb: 3 }}>
+          <Box 
+            ref={ganttContainerRef} 
+            sx={{ 
+              overflowX: 'hidden', 
+              overflowY: 'hidden', 
+              pb: 3,
+              width: '100%', 
+              '@media print': {
+                width: '95%',
+                marginRight: '30px'
+              }
+            }}
+          >
             <Box 
               ref={ganttContentRef} 
               id="gantt-content-wrapper"
@@ -842,9 +857,11 @@ const ImplementationGantt = () => {
                 transform: 'scale(1)',
                 transformOrigin: 'left top',
                 width: '100%',
+                paddingRight: '75px', /* Add padding to prevent cutting off */
                 '@media print': { 
-                  maxWidth: '100vw',
+                  maxWidth: '95%',
                   transform: 'scale(1)',
+                  paddingRight: '100px', /* More padding in print mode */
                 }
               }}
             >
@@ -861,6 +878,7 @@ const ImplementationGantt = () => {
                       className="phase-header-bg"
                       sx={{ 
                         position: 'absolute',
+                        left: 0,position: 'absolute',
                         left: 0,
                         right: 0,
                         width: '100%', // Full width
@@ -882,8 +900,6 @@ const ImplementationGantt = () => {
                       <Box sx={{ 
                         width: '260px',
                         fontWeight: 'bold',
-                        px: 1,width: '260px',
-                        fontWeight: 'bold',
                         px: 1,
                         zIndex: 10,
                         color: colors.dark
@@ -900,8 +916,8 @@ const ImplementationGantt = () => {
                       const taskWidth = getTaskWidth(task.duration, task.isSelfPaced);
                       
                       // Create a CSS variable to use for the task width in print mode
-                      const taskWidthVar = task.isSelfPaced ? '100%' : 
-                                          (totalWeeks > 0 ? `${(task.duration / totalWeeks) * 100}%` : `${task.duration * 24}px`);
+                      const taskWidthVar = task.isSelfPaced ? '95%' : 
+                                          (totalWeeks > 0 ? `${(task.duration / totalWeeks) * 90}%` : `${task.duration * 24}px`);
                       
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
@@ -960,7 +976,11 @@ const ImplementationGantt = () => {
                               flexGrow: 1, 
                               position: 'relative', 
                               height: '32px',
-                              zIndex: 5
+                              zIndex: 5,
+                              paddingRight: { xs: '0px', md: '30px' },
+                              '@media print': {
+                                paddingRight: '80px'
+                              }
                             }}
                           >
                             <Box 
@@ -985,7 +1005,8 @@ const ImplementationGantt = () => {
                                 whiteSpace: 'nowrap',
                                 '@media print': {
                                   width: `var(--task-width) !important`,
-                                  left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`
+                                  left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
+                                  maxWidth: 'calc(95% - 80px)'
                                 }
                               }}
                             >
