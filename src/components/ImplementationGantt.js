@@ -106,7 +106,8 @@ const ImplementationGantt = () => {
   const timeline = useMemo(() => {
     const scaleFactor = employeeCount <= 200 ? 1 : 
                         employeeCount <= 1000 ? 1.5 : 
-                        2;
+                        employeeCount <= 2500 ? 2 : 
+                        3; // Added condition for employees above 2500
     
     const selectedProductInfo = productMixes[selectedProduct];
     const modules = selectedProductInfo.modules;
@@ -160,7 +161,7 @@ const ImplementationGantt = () => {
         
         tasks.push({
           id: `${moduleName.toLowerCase()}-integration`,
-          name: `${moduleName} Integration`,
+          name: moduleName === 'Onboarding' ? 'Integration' : `${moduleName} Integration`, // Changed Onboarding Integration to Integration
           phase: 'Execution',
           start: integrationStart,
           duration: integrationDuration,
@@ -210,12 +211,15 @@ const ImplementationGantt = () => {
     
     currentWeek += 2; // Move forward 2 weeks
     
+    // Ensure Go Live has full width in PDF view for ClearCare Pro
+    const goLiveDuration = tierInfo.package === 'ClearCare Pro' ? baseDurations.launch.goLive + 0.5 : baseDurations.launch.goLive;
+    
     tasks.push({
       id: 'golive',
       name: 'Go Live',
       phase: 'Launch',
       start: currentWeek,
-      duration: baseDurations.launch.goLive,
+      duration: goLiveDuration,
       color: colors.secondaryAlt // purple
     });
     
@@ -232,7 +236,8 @@ const ImplementationGantt = () => {
     colors.secondaryAlt, 
     colors.secondaryAltLight, 
     colors.secondaryDark, 
-    productMixes
+    productMixes,
+    tierInfo.package
   ]);
 
   // Function to handle PDF export
@@ -381,15 +386,6 @@ const ImplementationGantt = () => {
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="subtitle1">
-                Module Check-ins:
-              </Typography>
-              <Typography variant="h6">
-                {tierInfo.moduleCheckIns} per module
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="subtitle1">
                 Estimated Timeline:
               </Typography>
               <Typography variant="h6">
@@ -402,13 +398,6 @@ const ImplementationGantt = () => {
       </Card>
       
       <Card id="gantt-chart-container">
-        <CardHeader 
-          title={
-            <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-              Implementation Gantt Chart
-            </Typography>
-          }
-        />
         <CardContent>
           <Box sx={{ overflowX: 'auto', pb: 3 }}>
             <Box sx={{ position: 'relative', minWidth: '700px' }}>
