@@ -141,7 +141,11 @@ const ImplementationGantt = () => {
       const needsIntegration = (moduleName === 'Recruiting' || moduleName === 'Onboarding');
       
       // Module setup duration, scaled by complexity
-      const moduleDuration = Math.ceil(baseDurations.execution.moduleDuration * scaleFactor);
+      // Special case for ClearCare Max above 2,500 employees - make setup tasks 3 weeks
+      let moduleDuration = Math.ceil(baseDurations.execution.moduleDuration * scaleFactor);
+      if (tierInfo.package === 'ClearCare Max' && employeeCount > 2500) {
+        moduleDuration = 3;
+      }
       
       // Module implementation
       tasks.push({
@@ -160,7 +164,7 @@ const ImplementationGantt = () => {
         
         tasks.push({
           id: `${moduleName.toLowerCase()}-integration`,
-          name: `${moduleName} Integration`,
+          name: `${moduleName === 'Onboarding' ? 'Integration' : `${moduleName} Integration`}`,
           phase: 'Execution',
           start: integrationStart,
           duration: integrationDuration,
@@ -232,7 +236,8 @@ const ImplementationGantt = () => {
     colors.secondaryAlt, 
     colors.secondaryAltLight, 
     colors.secondaryDark, 
-    productMixes
+    productMixes,
+    tierInfo.package
   ]);
 
   // Function to handle PDF export
@@ -381,15 +386,6 @@ const ImplementationGantt = () => {
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="subtitle1">
-                Module Check-ins:
-              </Typography>
-              <Typography variant="h6">
-                {tierInfo.moduleCheckIns} per module
-              </Typography>
-            </Box>
-            
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <Typography variant="subtitle1">
                 Estimated Timeline:
               </Typography>
               <Typography variant="h6">
@@ -402,13 +398,6 @@ const ImplementationGantt = () => {
       </Card>
       
       <Card id="gantt-chart-container">
-        <CardHeader 
-          title={
-            <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-              Implementation Gantt Chart
-            </Typography>
-          }
-        />
         <CardContent>
           <Box sx={{ overflowX: 'auto', pb: 3 }}>
             <Box sx={{ position: 'relative', minWidth: '700px' }}>
@@ -477,7 +466,11 @@ const ImplementationGantt = () => {
                               backgroundColor: task.color,
                               height: '32px',
                               color: task.color === colors.secondary || task.color === colors.secondaryDark ? '#254677' : '#FFFFFF',
-                              border: '1px solid rgba(0,0,0,0.1)'
+                              border: '1px solid rgba(0,0,0,0.1)',
+                              // Fix for Go Live width in PDF view for ClearCare Pro
+                              ...(task.id === 'golive' && tierInfo.package === 'ClearCare Pro' && {
+                                width: `${(task.duration * 24) + 2}px`
+                              })
                             }}
                           >
                             {task.duration >= 0.5 ? `${task.duration}w` : ''}
