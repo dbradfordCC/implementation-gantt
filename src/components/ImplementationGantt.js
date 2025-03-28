@@ -422,7 +422,7 @@ const ImplementationGantt = () => {
         goLiveDuration = 2; // Extended for Max
       } else { // 2500-4500+
         moduleDuration = 11;
-        setupDuration = 2;
+        setupDuration = 3;
         learningDuration = 5;
         testingDuration = 11; // Full module duration
         integrationDuration = 5;
