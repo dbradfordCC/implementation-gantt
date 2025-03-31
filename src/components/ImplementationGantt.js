@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Card, CardContent, CardHeader,
   Typography, Button, Slider, 
@@ -6,6 +6,7 @@ import {
   RadioGroup, Radio, FormControlLabel
 } from '@mui/material';
 import { Download } from 'lucide-react';
+import html2pdf from 'html2pdf.js';
 
 const ImplementationGantt = () => {
   // Color scheme based on provided brand colors
@@ -23,20 +24,14 @@ const ImplementationGantt = () => {
     lightGray: '#F5F5F5'     // Light gray for backgrounds
   };
   
-  // Refs for scaling chart
-  const ganttContainerRef = useRef(null);
-  const ganttContentRef = useRef(null);
-  
   // State variables
   const [employeeCount, setEmployeeCount] = useState(200);
-  const [companyName, setCompanyName] = useState('');
   const [tierInfo, setTierInfo] = useState({
     tier: 'Small Biz',
     package: 'ClearCare Pro',
     moduleCheckIns: 0,
   });
   const [selectedProduct, setSelectedProduct] = useState('ClearRecruit');
-  const [totalTaskWidth, setTotalTaskWidth] = useState(0);
 
   // Define product mixes and their modules
   const productMixes = {
@@ -82,190 +77,6 @@ const ImplementationGantt = () => {
     }
   };
 
-  // Function to adjust gantt scale to fit container
-  const adjustGanttScale = useCallback(() => {
-    if (!ganttContainerRef.current || !ganttContentRef.current) return;
-    
-    const containerWidth = ganttContainerRef.current.clientWidth;
-    const contentWidth = ganttContentRef.current.scrollWidth;
-    
-    if (contentWidth > containerWidth) {
-      // Calculate scale to fit width
-      const scaleWidth = containerWidth / contentWidth;
-      
-      // Get content height and visible container height
-      const contentHeight = ganttContentRef.current.scrollHeight;
-      const containerHeight = window.innerHeight * 0.7; // Use 70% of viewport height as max
-      
-      // Determine if we need to scale for height as well
-      const scaleHeight = containerHeight / contentHeight;
-      
-      // Use the smaller scale to ensure everything fits
-      const scale = Math.min(scaleWidth, scaleHeight, 1); // Never scale up
-      
-      // Apply the scale
-      ganttContentRef.current.style.transform = `scale(${scale})`;
-      ganttContentRef.current.style.transformOrigin = 'left top';
-      
-      // Set container height to show all content without scrolling
-      const newHeight = Math.min(contentHeight * scale, containerHeight);
-      ganttContainerRef.current.style.height = `${newHeight}px`;
-    } else {
-      ganttContentRef.current.style.transform = 'none';
-      ganttContainerRef.current.style.height = 'auto';
-    }
-  }, []);
-
-  // Effect to handle scaling the gantt chart to fit the container
-  useEffect(() => {
-    if (ganttContainerRef.current && ganttContentRef.current) {
-      const resizeObserver = new ResizeObserver(() => {
-        adjustGanttScale();
-      });
-      
-      resizeObserver.observe(ganttContainerRef.current);
-      adjustGanttScale();
-      
-      // Also adjust when window is resized
-      const handleResize = () => {
-        adjustGanttScale();
-      };
-      
-      window.addEventListener('resize', handleResize);
-      
-      // Initial adjustment with a slight delay to ensure everything is rendered
-      setTimeout(() => {
-        adjustGanttScale();
-      }, 100);
-      
-      return () => {
-        resizeObserver.disconnect();
-        window.removeEventListener('resize', handleResize);
-      };
-    }
-  }, [adjustGanttScale]);
-
-  // Calculate content area width after initial render
-  useEffect(() => {
-    if (ganttContainerRef.current) {
-      const calculateTaskAreaWidth = () => {
-        const containerWidth = ganttContainerRef.current.clientWidth;
-        // Subtract the width of the task name column (260px)
-        const availableWidth = containerWidth - 260;
-        setTotalTaskWidth(availableWidth);
-      };
-
-      calculateTaskAreaWidth();
-      window.addEventListener('resize', calculateTaskAreaWidth);
-      
-      return () => {
-        window.removeEventListener('resize', calculateTaskAreaWidth);
-      };
-    }
-  }, []);
-
-  // Add specialized print styles
-  useEffect(() => {
-    // Create a style element for print styles
-    const style = document.createElement('style');
-    style.textContent = `
-      @media print {
-        @page {
-          size: 11in 8.5in landscape;
-          margin: 0in !important; /* Remove all margins */
-        }
-        
-        /* Hide unwanted elements during printing */
-        button, .no-print { 
-          display: none !important; 
-        }
-        
-        body {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          color-adjust: exact !important;
-          width: 100%;
-          max-width: 100%;
-          overflow-x: visible !important;
-        }
-        
-        #config-card {
-          margin: 0;
-          padding: 0;
-          max-height: 8in;
-          overflow: hidden;
-        }
-        
-        #gantt-chart-container {
-          margin: 0;
-          padding: 0;
-          max-height: 8in;
-          overflow: hidden;
-          width: 100vw !important;
-          max-width: 100vw !important;
-        }
-        
-        .MuiCardContent-root {
-          padding: 8px 4px !important;
-          width: 100% !important;
-          max-width: 100% !important;
-        }
-        
-        .MuiCardHeader-root {
-          padding: 8px 4px !important;
-        }
-        
-        /* Scale down to fit better */
-        #gantt-content-wrapper {
-          transform: scale(0.9) !important;
-          transform-origin: left top !important;
-          width: 100vw !important;
-          max-width: 100vw !important;
-          margin-right: 0 !important;
-          padding-right: 0 !important;
-        }
-        
-        /* Make phase headers stretch full width in print */
-        .phase-header-bg {
-          width: 100vw !important;
-          max-width: 100vw !important;
-          left: 0 !important;
-          right: 0 !important;
-        }
-        
-        /* Reduce width of task name column to give more space to bars */
-        .task-name-column {
-          width: 200px !important;
-        }
-        
-        /* Ensure task bars take full width in print */
-        .task-bar-container {
-          width: calc(100% - 200px) !important;
-          padding-right: 0 !important;
-        }
-        
-        /* Adjust task bar widths in print */
-        .task-bar {
-          width: var(--task-width) !important;
-          max-width: calc(80% - 20px) !important;
-        }
-        
-        /* Make launch phase bars more visible */
-        .launch-phase-task .task-bar {
-          width: calc(var(--task-width) * 1.4) !important;
-          max-width: calc(70% - 10px) !important;
-        }
-        
-        
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, [companyName]);
-
   // Calculate tier based on employee count
   useEffect(() => {
     let tier, packageName, checkIns;
@@ -293,144 +104,17 @@ const ImplementationGantt = () => {
 
   // Calculate timeline based on employee count, tier, and product mix
   const timeline = useMemo(() => {
+    // Modified to handle employee count for ClearCare Max
+    const scaleFactor = employeeCount <= 200 ? 1 : 
+                        employeeCount <= 1000 ? 1.5 : 
+                        employeeCount <= 2500 ? 2 : 
+                        3;
+    
     const selectedProductInfo = productMixes[selectedProduct];
     const modules = selectedProductInfo.modules;
     
-    // Check if Onboarding is included in the selected product
-    const hasOnboarding = modules.includes('Onboarding');
-    
-    // Get the service package
-    const servicePackage = tierInfo.package;
-    
-    // For ClearCare Pro (self-paced implementation)
-    if (servicePackage === 'ClearCare Pro') {
-      let tasks = [];
-      
-      // Initiation & Planning Phase - just optional setup assistance
-      tasks.push({
-        id: 'optional-setup',
-        name: 'Optional ClearCompany Setup Assistance',
-        phase: 'Initiation & Planning',
-        start: 0,
-        duration: 2,
-        color: colors.primaryDark,
-        isSelfPaced: false
-      });
-      
-      // Execution Phase - all modules with implementation, setup, learning, testing
-      const moduleTypes = ['Recruiting', 'Onboarding', 'LMS', 'Performance/Goals/Engagement'];
-      
-      for (const moduleType of moduleTypes) {
-        // Only include modules that are part of the selected product
-        if (modules.includes(moduleType)) {
-          tasks.push({
-            id: `${moduleType.toLowerCase()}-implementation`,
-            name: `${moduleType} Implementation`,
-            phase: 'Execution',
-            start: 0,
-            duration: 1, // Not relevant for self-paced
-            color: colors.primaryDark,
-            isSelfPaced: true,
-            selfPacedLabel: 'Variable - Client Self-Paced'
-          });
-          
-          // Add sub-tasks
-          tasks.push({
-            id: `${moduleType.toLowerCase()}-setup`,
-            name: 'Setup',
-            phase: 'Execution',
-            start: 0,
-            duration: 1, // Not relevant for self-paced
-            color: colors.secondaryAlt, // Purple
-            isSelfPaced: true,
-            selfPacedLabel: 'Variable - Client Self-Paced'
-          });
-          
-          tasks.push({
-            id: `${moduleType.toLowerCase()}-learning`,
-            name: 'Learning',
-            phase: 'Execution',
-            start: 0,
-            duration: 1, // Not relevant for self-paced
-            color: colors.secondaryDark, // Dark yellow
-            isSelfPaced: true,
-            selfPacedLabel: 'Variable - Client Self-Paced'
-          });
-          
-          tasks.push({
-            id: `${moduleType.toLowerCase()}-testing`,
-            name: 'Testing',
-            phase: 'Execution',
-            start: 0,
-            duration: 1, // Not relevant for self-paced
-            color: colors.primaryLight, // Light blue
-            isSelfPaced: true,
-            selfPacedLabel: 'Variable - Client Self-Paced'
-          });
-        }
-      }
-      
-      // Launch Phase - just Go Live
-      tasks.push({
-        id: 'golive',
-        name: 'Go Live',
-        phase: 'Launch',
-        start: 0,
-        duration: 1, // Not relevant for self-paced
-        color: colors.secondaryAlt,
-        isSelfPaced: true,
-        selfPacedLabel: 'Variable - Client Self-Paced'
-      });
-      
-      return tasks;
-    }
-    
-    // For ClearCare Advanced and Max
     let tasks = [];
     let currentWeek = 0;
-    
-    // Determine module duration based on service package and employee count
-    let moduleDuration, setupDuration, learningDuration, testingDuration, integrationDuration, dataImportDuration;
-    let rolloutTrainingDuration = 2; // Default
-    let goLiveDuration = 1; // Default
-    
-    if (servicePackage === 'ClearCare Advanced') {
-      if (employeeCount <= 600) {
-        moduleDuration = 5;
-        setupDuration = 2;
-        learningDuration = 3;
-        testingDuration = 5; // Full module duration
-        integrationDuration = 4;
-        dataImportDuration = 4;
-      } else { // 600-1000
-        moduleDuration = 7;
-        setupDuration = 2;
-        learningDuration = 3;
-        testingDuration = 7; // Full module duration
-        integrationDuration = 4;
-        dataImportDuration = 4;
-      }
-    } else { // ClearCare Max
-      if (employeeCount <= 2500) {
-        moduleDuration = 9;
-        setupDuration = 3;
-        learningDuration = 4;
-        testingDuration = 9; // Full module duration
-        integrationDuration = 5;
-        dataImportDuration = 4;
-        rolloutTrainingDuration = 3; // Extended for Max
-        goLiveDuration = 2; // Extended for Max
-      } else { // 2500-4500+
-        moduleDuration = 11;
-        setupDuration = 3;
-        learningDuration = 5;
-        testingDuration = 11; // Full module duration
-        integrationDuration = 5;
-        dataImportDuration = 5;
-        rolloutTrainingDuration = 3; // Extended for Max
-        goLiveDuration = 2; // Extended for Max
-      }
-    }
     
     // Initiation & Planning Phase
     tasks.push({
@@ -438,8 +122,8 @@ const ImplementationGantt = () => {
       name: 'Project Kickoff',
       phase: 'Initiation & Planning',
       start: currentWeek,
-      duration: 1,
-      color: colors.primaryDark,
+      duration: 1, // Fixed at 1 week
+      color: colors.primaryDark, // Darker blue
     });
     
     tasks.push({
@@ -447,7 +131,7 @@ const ImplementationGantt = () => {
       name: 'Requirements Gathering',
       phase: 'Initiation & Planning',
       start: currentWeek,
-      duration: 2,
+      duration: 2, // Fixed at 2 weeks
       color: colors.primaryLighter
     });
     
@@ -456,75 +140,58 @@ const ImplementationGantt = () => {
     // Execution Phase - add modules from the selected product
     for (let i = 0; i < modules.length; i++) {
       const moduleName = modules[i];
+      const needsIntegration = (moduleName === 'Recruiting' || moduleName === 'Onboarding');
       
-      // Start the next module 1 week before the previous module ends (overlap)
-      if (i > 0) {
-        currentWeek -= 1; // Overlap by 1 week
-      }
+      // Module setup duration, scaled by complexity
+      const moduleDuration = Math.ceil(baseDurations.execution.moduleDuration * scaleFactor);
       
       // Module implementation
       tasks.push({
-        id: `${moduleName.toLowerCase()}-implementation`,
+        id: `${moduleName.toLowerCase()}-setup`,
         name: `${moduleName} Implementation`,
         phase: 'Execution',
         start: currentWeek,
         duration: moduleDuration,
-        color: colors.primaryDark
+        color: colors.primaryDark // darker blue
       });
       
-      // Module setup (first part of implementation)
-      tasks.push({
-        id: `${moduleName.toLowerCase()}-setup`,
-        name: 'Setup',
-        phase: 'Execution',
-        start: currentWeek,
-        duration: setupDuration,
-        color: colors.secondaryAlt // Purple
-      });
+      // Add integration time if needed - now same length and concurrent with testing
+      if (needsIntegration) {
+        const integrationDuration = moduleDuration * 0.5; // 50% of module time
+        const integrationStart = currentWeek + (moduleDuration * 0.5); // Second half
+        
+        tasks.push({
+          id: `${moduleName.toLowerCase()}-integration`,
+          name: `Integration`, // Changed from ${moduleName} Integration to just Integration
+          phase: 'Execution',
+          start: integrationStart,
+          duration: integrationDuration,
+          color: colors.secondaryAltLight // lighter purple
+        });
+      }
       
-      // Module learning (first part of implementation)
-      tasks.push({
-        id: `${moduleName.toLowerCase()}-learning`,
-        name: 'Learning',
-        phase: 'Execution',
-        start: currentWeek,
-        duration: learningDuration,
-        color: colors.secondaryDark // Dark yellow
-      });
+      // Add testing - now 50% of module time during second half
+      const testingStart = currentWeek + (moduleDuration * 0.5); // Second half
+      const testingDuration = moduleDuration * 0.5; // 50% of module time
       
-      // Module testing (starts after setup)
       tasks.push({
         id: `${moduleName.toLowerCase()}-testing`,
-        name: 'Testing',
+        name: `${moduleName} Testing & Validation`,
         phase: 'Execution',
-        start: currentWeek + setupDuration, // Start after setup completes
-        duration: moduleDuration - setupDuration, // Adjusted duration
-        color: colors.primaryLight // Light blue
+        start: testingStart,
+        duration: testingDuration,
+        color: colors.secondaryDark // darker yellow
       });
       
       // Add historical data import for Recruiting module only
       if (moduleName === 'Recruiting') {
-        const historyStart = currentWeek + moduleDuration - dataImportDuration;
         tasks.push({
           id: 'historical-data-import',
           name: 'Historical Data Import',
           phase: 'Execution',
-          start: historyStart,
-          duration: dataImportDuration,
-          color: colors.secondaryAltLight // Lighter purple
-        });
-      }
-      
-      // Add integration for Onboarding module only
-      if (moduleName === 'Onboarding') {
-        const integrationStart = currentWeek + moduleDuration - integrationDuration;
-        tasks.push({
-          id: 'onboarding-integration',
-          name: 'Integration',
-          phase: 'Execution',
-          start: integrationStart,
-          duration: integrationDuration,
-          color: colors.secondaryAltLight // Lighter purple
+          start: testingStart,
+          duration: testingDuration, // Same duration as testing
+          color: colors.primaryLight // Light blue
         });
       }
       
@@ -533,34 +200,35 @@ const ImplementationGantt = () => {
     }
     
     // Launch Phase
-    // Add rollout training
+    // Add rollout training for 2 weeks prior to go live
     tasks.push({
       id: 'rollout-training',
       name: 'Rollout Training',
       phase: 'Launch',
       start: currentWeek,
-      duration: rolloutTrainingDuration,
+      duration: 2, // Fixed at 2 weeks
       color: colors.secondary // yellow
     });
     
-    currentWeek += rolloutTrainingDuration;
+    currentWeek += 2; // Move forward 2 weeks
     
+    // Modified to make Go Live task full width for ClearCare Pro
     tasks.push({
       id: 'golive',
       name: 'Go Live',
       phase: 'Launch',
       start: currentWeek,
-      duration: goLiveDuration,
+      // If it's ClearCare Pro, ensure the Go Live task spans full width
+      duration: tierInfo.package === 'ClearCare Pro' ? 2 : baseDurations.launch.goLive,
       color: colors.secondaryAlt // purple
     });
-    
-    currentWeek += goLiveDuration;
     
     return tasks;
   }, [
     employeeCount, 
     selectedProduct, 
-    tierInfo.package,
+    baseDurations.execution.moduleDuration, 
+    baseDurations.launch.goLive, 
     colors.primaryDark, 
     colors.primaryLight, 
     colors.primaryLighter, 
@@ -568,123 +236,37 @@ const ImplementationGantt = () => {
     colors.secondaryAlt, 
     colors.secondaryAltLight, 
     colors.secondaryDark, 
-    productMixes
+    productMixes,
+    tierInfo.package // Added to dependencies since we now use it
   ]);
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
-    try {
-      // Store original styles to restore later if needed
-      const ganttContent = ganttContentRef.current;
-      let originalTransform = null;
-      let originalWidth = null;
-      let originalMaxWidth = null;
-      
-      if (ganttContent) {
-        // Store original styles
-        originalTransform = ganttContent.style.transform;
-        originalWidth = ganttContent.style.width;
-        originalMaxWidth = ganttContent.style.maxWidth;
-      }
-      
-      // Apply a class that will be used only during printing
-      document.body.classList.add('printing-pdf');
-      
-      // Trigger browser print dialog
-      window.print();
-      
-      // Restore original styles after printing
-      setTimeout(() => {
-        document.body.classList.remove('printing-pdf');
-        
-        if (ganttContent) {
-          ganttContent.style.transform = originalTransform;
-          ganttContent.style.width = originalWidth;
-          ganttContent.style.maxWidth = originalMaxWidth;
-        }
-        
-        // Re-apply scaling if needed
-        adjustGanttScale();
-      }, 500); // Small delay to ensure print dialog has opened
-    } catch (error) {
-      console.error('Error triggering print dialog:', error);
-    }
-  }, [adjustGanttScale]);
+    const element = document.getElementById('gantt-chart-container');
+    const opt = {
+      margin: 1,
+      filename: 'implementation-gantt.pdf',
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { unit: 'in', format: 'letter', orientation: 'landscape' }
+    };
+    
+    html2pdf().set(opt).from(element).save();
+  }, []);
 
   // Calculate total implementation time
   const totalWeeks = useMemo(() => {
-    // For ClearCare Pro, return a special message instead of weeks
-    if (tierInfo.package === 'ClearCare Pro') {
-      return 'Client Self Paced';
-    }
-    
-    // For other packages, calculate based on tasks
-    const lastTask = timeline.length > 0 ? 
-      timeline.reduce((latest, task) => {
-        const taskEnd = task.start + task.duration;
-        return taskEnd > latest ? taskEnd : latest;
-      }, 0) : 0;
-      
-    return Math.ceil(lastTask);
-  }, [timeline, tierInfo.package]);
+    return timeline.length > 0 ? 
+      Math.ceil(timeline[timeline.length - 1].start + timeline[timeline.length - 1].duration) : 0;
+  }, [timeline]);
   
-  // For display purposes - only for non-Pro packages
-  const timeDisplay = useMemo(() => {
-    if (tierInfo.package === 'ClearCare Pro') {
-      return "Client Self Paced - 2 Weeks of optional ClearCompany setup assistance provided at the start of the Project";
-    }
-    
-    const weeks = totalWeeks;
-    const months = Math.floor(weeks / 4);
-    const remainingWeeks = weeks % 4;
-    
-    if (months > 0) {
-      return `${weeks} weeks (${months} month${months > 1 ? 's' : ''}${remainingWeeks > 0 ? ` and ${remainingWeeks} week${remainingWeeks > 1 ? 's' : ''}` : ''})`;
-    } else {
-      return `${weeks} weeks`;
-    }
-  }, [totalWeeks, tierInfo.package]);
+  // For display purposes
+  const months = Math.floor(totalWeeks / 4);
+  const remainingWeeks = totalWeeks % 4;
 
-  // Format employee count for display
-  const displayEmployeeCount = useMemo(() => {
-    return employeeCount >= 4500 ? '4,500+' : employeeCount;
-  }, [employeeCount]);
-
-  // Calculate the task width scaling factor
-  const getTaskWidth = useCallback((taskDuration, isSelfPaced) => {
-    if (isSelfPaced) {
-      return '100%'; // Full width for self-paced tasks
-    }
-    
-    if (totalWeeks <= 0 || !totalTaskWidth) return `${taskDuration * 24}px`;
-    
-    // Calculate proportional width based on total timeline and container width
-    const widthPerWeek = totalTaskWidth / totalWeeks;
-    return `${taskDuration * widthPerWeek}px`;
-  }, [totalWeeks, totalTaskWidth]);
-
-  // Group tasks by phase
-  const tasksByPhase = useMemo(() => {
-    const grouped = {};
-    const phases = ['Initiation & Planning', 'Execution', 'Launch'];
-    
-    phases.forEach(phase => {
-      grouped[phase] = timeline.filter(task => task.phase === phase);
-    });
-    
-    return grouped;
-  }, [timeline]);return (
+  return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333' }}>
-      {/* Logo centered at the top */}
-      <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: 2 }}>
-        <img 
-          src="https://cc-client-cdn.clearcompany.com/7d1a23bb-d726-1404-8eb3-460472842d52/custom-files/409caa49-4479-275f-a9ce-2bb70eb9eb4d/ClearCompany_Main_Resized.png" 
-          alt="ClearCompany Logo" 
-          style={{ height: '50px' }}
-        />
-      </Box>
-      
-      <Card id="config-card" sx={{ pageBreakAfter: 'always' }}>
+      <Card>
         <CardHeader 
           title={
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -706,21 +288,7 @@ const ImplementationGantt = () => {
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             <Box>
               <Typography variant="subtitle1" gutterBottom>
-                Company Name
-              </Typography>
-              <TextField
-                fullWidth
-                value={companyName}
-                onChange={(e) => setCompanyName(e.target.value)}
-                placeholder="Enter company name"
-                variant="outlined"
-                size="small"
-              />
-            </Box>
-            
-            <Box>
-              <Typography variant="subtitle1" gutterBottom>
-                Employee Count: {displayEmployeeCount}
+                Employee Count: {employeeCount}
               </Typography>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <TextField
@@ -733,7 +301,7 @@ const ImplementationGantt = () => {
                 <Box sx={{ flexGrow: 1 }}>
                   <Slider
                     min={1}
-                    max={4500}
+                    max={2000}
                     value={employeeCount}
                     onChange={(_, value) => setEmployeeCount(value)}
                   />
@@ -816,235 +384,99 @@ const ImplementationGantt = () => {
               </Box>
             </Box>
             
-            
+            {/* Removed Module Check-ins section */}
             
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <Typography variant="subtitle1">
                 Estimated Timeline:
               </Typography>
               <Typography variant="h6">
-                {timeDisplay}
+                {totalWeeks} weeks
+                {months > 0 ? ` (${months} month${months > 1 ? 's' : ''}${remainingWeeks > 0 ? ` and ${remainingWeeks} week${remainingWeeks > 1 ? 's' : ''}` : ''})` : ''}
               </Typography>
             </Box>
           </Box>
         </CardContent>
       </Card>
       
-      <Card id="gantt-chart-container" sx={{ pageBreakBefore: 'always' }}>
-        <CardHeader 
-          title={
-            <Typography variant="h5" sx={{ fontFamily: "'Open Sans', sans-serif", color: colors.primary }}>
-              {companyName ? `${companyName} - Implementation Gantt Chart` : 'Implementation Gantt Chart'}
-            </Typography>
-          }
-        />
+      <Card id="gantt-chart-container">
+        {/* Removed CardHeader with title for PDF view */}
         <CardContent>
-          <Box 
-            ref={ganttContainerRef} 
-            sx={{ 
-              overflowX: 'hidden', 
-              overflowY: 'hidden', 
-              pb: 3,
-              width: '100%', 
-              '@media print': {
-                width: '100vw',
-                maxWidth: '100vw',
-                margin: 0,
-                padding: 0,
-                overflow: 'visible'
-              }
-            }}
-          >
-            <Box 
-              ref={ganttContentRef} 
-              id="gantt-content-wrapper"
-              sx={{ 
-                position: 'relative', 
-                minWidth: '700px', 
-                transform: 'scale(1)',
-                transformOrigin: 'left top',
-                width: '100%',
-                paddingRight: '50px',
-                '@media print': { 
-                  width: '100vw !important',
-                  maxWidth: '100vw !important',
-                  transform: 'scale(0.9) !important',
-                  transformOrigin: 'left top !important',
-                  paddingRight: '0'
-                }
-              }}
-            >
+          <Box sx={{ overflowX: 'auto', pb: 3 }}>
+            <Box sx={{ position: 'relative', minWidth: '700px' }}>
               {/* Group by phase */}
               {['Initiation & Planning', 'Execution', 'Launch'].map(phase => {
-                const phaseTasks = tasksByPhase[phase];
+                const phaseTasks = timeline.filter(task => task.phase === phase);
                 
                 if (phaseTasks.length === 0) return null;
                 
                 return (
-                  <Box key={phase} sx={{ position: 'relative', mb: 3 }}>
-                    {/* Phase header background that spans full width */}
-                    <Box 
-                      className="phase-header-bg"
-                      sx={{ 
-                        position: 'absolute',
-                        left: 0,
-                        right: 0,
-                        width: '100%', // Full width
-                        height: '48px',
-                        backgroundColor: colors.lightGray,
-                        zIndex: 1,
-                        '@media print': {
-                          width: '100vw !important',
-                          maxWidth: '100vw !important',
-                          left: 0,
-                          right: 0
-                        }
-                      }}
-                    />
-                    
+                  <Box key={phase}>
                     <Box 
                       sx={{ 
-                        position: 'relative',
-                        display: 'flex',
-                        py: 1.5,
-                        mb: 1,
+                        position: 'sticky', 
+                        left: 0, 
+                        width: '200px', 
+                        fontWeight: 'bold', 
+                        py: 1.5, 
+                        px: 1, 
+                        mb: 1, 
                         zIndex: 10,
+                        backgroundColor: colors.lightGray, 
+                        color: colors.dark
                       }}
                     >
-                      <Box sx={{ 
-                        width: '260px',
-                        fontWeight: 'bold',
-                        px: 1,
-                        zIndex: 10,
-                        color: colors.dark,
-                        '@media print': {
-                          width: '200px !important'
-                        }
-                      }}>
-                        {phase}
-                      </Box>
+                      {phase}
                     </Box>
                     
-                    {phaseTasks.map(task => {
-                      // Determine if we should use a dotted border for self-paced tasks
-                      const borderStyle = task.isSelfPaced ? 'dashed' : 'solid';
-                      
-                      // Calculate dynamic task width based on the total timeline width
-                      const taskWidth = getTaskWidth(task.duration, task.isSelfPaced);
-                      
-                      // Create a CSS variable to use for the task width in print mode
-                      const taskWidthVar = task.isSelfPaced ? '80%' : 
-                                          (totalWeeks > 0 ? 
-                                            task.phase === 'Launch' ? 
-                                              `${(task.duration / totalWeeks) * 150}%` : 
-                                              `${(task.duration / totalWeeks) * 75}%` 
-                                            : `${task.duration * 24}px`);
-                      
-                      // Determine what text to display inside the bar
-                      const barText = task.isSelfPaced ? task.selfPacedLabel : 
-                                     (task.duration >= 0.5 ? `${task.duration}w` : '');
-                                     
-                      // For Pro package, use lighter fills with darker borders for all but setup
-                      const isProPackage = tierInfo.package === 'ClearCare Pro';
-                      const isSetupTask = task.name === 'Setup' || task.name === 'Optional ClearCompany Setup Assistance';
-                      
-                      // Determine background and border colors
-                      let backgroundColor = task.color;
-                      let borderColor = `1px ${borderStyle} rgba(0,0,0,0.1)`;
-                      
-                      if (isProPackage && !isSetupTask && task.isSelfPaced) {
-                        // Create a lighter version of the color for fill
-                        const lightColor = task.color === colors.primaryDark ? 'rgba(37, 70, 119, 0.15)' :
-                                         task.color === colors.secondaryAlt ? 'rgba(130, 34, 117, 0.15)' :
-                                         task.color === colors.secondaryDark ? 'rgba(230, 230, 81, 0.15)' :
-                                         task.color === colors.primaryLight ? 'rgba(85, 186, 234, 0.15)' :
-                                         'rgba(255, 255, 255, 0.15)';
-                                         
-                        backgroundColor = lightColor;
-                        borderColor = `1px ${borderStyle} ${task.color}`;
-                      }
-                      
-                      return (
+                    {phaseTasks.map(task => (
+                      <Box 
+                        key={task.id} 
+                        sx={{ 
+                          display: 'flex', 
+                          mb: 1.5, 
+                          alignItems: 'center', 
+                          height: '32px'
+                        }}
+                      >
                         <Box 
-                          key={task.id} 
                           sx={{ 
-                            display: 'flex', 
-                            mb: 1.5, 
-                            alignItems: 'center', 
-                            height: '32px'
+                            position: 'sticky', 
+                            left: 0, 
+                            width: '200px', 
+                            backgroundColor: 'white', 
+                            zIndex: 10, 
+                            px: 1,
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            whiteSpace: 'nowrap',
+                            color: colors.dark
                           }}
                         >
+                          {task.name}
+                        </Box>
+                        <Box sx={{ flexGrow: 1, position: 'relative', height: '32px' }}>
                           <Box 
-                            className="task-name-column"
                             sx={{ 
-                              position: 'sticky', 
-                              left: 0, 
-                              width: '260px', // Fixed width for task names
-                              backgroundColor: 'white', 
-                              zIndex: 10, 
-                              px: 1,
-                              fontSize: '0.9rem', // Slightly smaller text to fit longer names
-                              overflow: 'visible', // Changed from 'hidden' to prevent truncation
-                              whiteSpace: 'normal', // Changed from 'nowrap' to allow wrapping
-                              lineHeight: '1.2',
-                              color: colors.dark,
-                              '@media print': {
-                                width: '200px !important'
-                              }
-                            }}
-                          >
-                            {task.name}
-                          </Box>
-                          <Box 
-                            className={`task-bar-container ${task.phase === 'Launch' ? 'launch-phase-task' : ''}`}
-                            sx={{ 
-                              flexGrow: 1, 
-                              position: 'relative', 
+                              position: 'absolute', 
+                              borderRadius: '4px', 
+                              display: 'flex', 
+                              alignItems: 'center', 
+                              justifyContent: 'center', 
+                              fontSize: '0.875rem',
+                              left: `${task.start * 24}px`,
+                              width: `${task.duration * 24}px`,
+                              backgroundColor: task.color,
                               height: '32px',
-                              zIndex: 5,
-                              paddingRight: { xs: '40px', md: '60px' },
-                              '@media print': {
-                                paddingRight: '0 !important',
-                                width: 'calc(100% - 200px) !important'
-                              }
+                              color: task.color === colors.secondary || task.color === colors.secondaryDark ? '#254677' : '#FFFFFF',
+                              border: '1px solid rgba(0,0,0,0.1)'
                             }}
                           >
-                            <Box 
-                              className="task-bar"
-                              sx={{ 
-                                position: 'absolute', 
-                                borderRadius: '4px', 
-                                display: 'flex', 
-                                alignItems: 'center', 
-                                justifyContent: 'center', 
-                                fontSize: '0.875rem',
-                                left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
-                                width: taskWidth,
-                                '--task-width': taskWidthVar,
-                                backgroundColor: backgroundColor,
-                                height: '32px',
-                                color: (task.color === colors.secondary || task.color === colors.secondaryDark || 
-                                       (isProPackage && !isSetupTask && task.isSelfPaced)) ? '#254677' : '#FFFFFF',
-                                border: borderColor,
-                                overflow: 'hidden',
-                                textOverflow: 'ellipsis',
-                                whiteSpace: 'nowrap',
-                                '@media print': {
-                                  width: `var(--task-width) !important`,
-                                  left: task.phase === 'Launch' ? 
-                                    `${Math.max(0, task.start - 2) * (totalTaskWidth / totalWeeks)}px` : 
-                                    `${task.start * (totalTaskWidth / totalWeeks)}px`,
-                                  maxWidth: task.phase === 'Launch' ? 
-                                    'calc(70% - 10px)' : 'calc(80% - 20px)'
-                                }
-                              }}
-                            >
-                              {barText}
-                            </Box>
+                            {task.duration >= 0.5 ? `${task.duration}w` : ''}
                           </Box>
                         </Box>
-                      );
-                    })}
+                      </Box>
+                    ))}
                   </Box>
                 );
               })}
