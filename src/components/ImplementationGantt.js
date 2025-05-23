@@ -267,6 +267,13 @@ const ImplementationGantt = () => {
           width: calc(var(--task-width) * 1.4) !important;
           max-width: calc(70% - 10px) !important;
         }
+        
+        /* Ensure Go Live task is right-aligned for all packages */
+        .launch-phase-task[data-task-name="Go Live"] .task-bar {
+          right: 0 !important;
+          left: auto !important;
+          position: absolute !important;
+        }
       }
     `;
     document.head.appendChild(style);
@@ -1037,6 +1044,7 @@ const ImplementationGantt = () => {
                           </Box>
                           <Box 
                             className={containerClassName}
+                            data-task-name={task.name}
                             sx={{ 
                               flexGrow: 1, 
                               position: 'relative', 
