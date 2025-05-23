@@ -270,7 +270,6 @@ const ImplementationGantt = () => {
         
         /* Position Go Live task immediately after Rollout Training */
         .launch-phase-task[data-task-name="Go Live"] .task-bar {
-          left: `${task.start * (totalTaskWidth / totalWeeks)}px` !important;
           position: absolute !important;
         }
       }
