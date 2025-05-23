@@ -262,10 +262,16 @@ const ImplementationGantt = () => {
           max-width: 80% !important;
         }
         
-        /* Make launch phase bars more visible */
+        /* Make launch phase bars more visible and ensure proper positioning */
         .launch-phase-task:not(.pro-tier-task) .task-bar {
           width: calc(var(--task-width) * 1.4) !important;
           max-width: calc(70% - 10px) !important;
+        }
+        
+        /* Ensure Go Live task positioning is consistent across all packages */
+        .launch-phase-task .task-bar {
+          left: auto !important;
+          position: relative !important;
         }
       }
     `;
@@ -678,14 +684,7 @@ const ImplementationGantt = () => {
     }
     
     const weeks = totalWeeks;
-    const months = Math.floor(weeks / 4);
-    const remainingWeeks = weeks % 4;
-    
-    if (months > 0) {
-      return `${weeks} weeks (${months} month${months > 1 ? 's' : ''}${remainingWeeks > 0 ? ` and ${remainingWeeks} week${remainingWeeks > 1 ? 's' : ''}` : ''})`;
-    } else {
-      return `${weeks} weeks`;
-    }
+    return `${weeks} weeks`;
   }, [totalWeeks, tierInfo.package]);
 
   // Format employee count for display
@@ -1079,8 +1078,9 @@ const ImplementationGantt = () => {
                                 '@media print': {
                                   width: `var(--task-width) !important`,
                                   left: task.phase === 'Launch' ? 
-                                    `${Math.max(0, task.start - 2) * (totalTaskWidth / totalWeeks)}px` : 
+                                    'auto !important' : 
                                     `${task.start * (totalTaskWidth / totalWeeks)}px`,
+                                  position: task.phase === 'Launch' ? 'relative !important' : 'absolute',
                                   maxWidth: task.phase === 'Launch' && !isProPackage ? 
                                     'calc(70% - 10px)' : 'calc(80% - 20px)'
                                 }
