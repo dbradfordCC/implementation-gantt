@@ -268,10 +268,9 @@ const ImplementationGantt = () => {
           max-width: calc(70% - 10px) !important;
         }
         
-        /* Ensure Go Live task is right-aligned for all packages */
+        /* Position Go Live task to extend slightly beyond Rollout Training */
         .launch-phase-task[data-task-name="Go Live"] .task-bar {
-          right: 0 !important;
-          left: auto !important;
+          left: calc(var(--rollout-end) - 10px) !important;
           position: absolute !important;
         }
       }
@@ -390,19 +389,7 @@ const ImplementationGantt = () => {
           
           // Add historical data import for Recruiting module only
           if (moduleType === 'Recruiting') {
-            tasks.push({
-              id: 'historical-data-import',
-              name: 'Historical Data Import',
-              phase: 'Execution',
-              start: 0,
-              duration: 1, // Not relevant for self-paced
-              color: colors.secondaryAltLight, // Lighter purple
-              isSelfPaced: true,
-              selfPacedLabel: 'Variable - Client Self-Paced'
-            });
-            
-            // Add integration for ClearRecruit (ATS Only) - but NOT for ClearCare Pro
-            // (Integration is excluded from ClearCare Pro as per requirement)
+            // Historical Data Import is excluded from ClearCare Pro packages
           }
         }
       }
@@ -983,6 +970,11 @@ const ImplementationGantt = () => {
                                               `${(task.duration / totalWeeks) * 75}%` 
                                             : `${task.duration * 24}px`);
                       
+                      // Calculate rollout training end position for Go Live positioning
+                      const rolloutEndVar = task.name === 'Go Live' && task.phase === 'Launch' ? 
+                        `${((task.start - task.duration) / totalWeeks) * 75 + (task.duration / totalWeeks) * 150}%` : 
+                        null;
+                      
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
                                      (task.duration >= 0.5 ? `${task.duration}w` : '');
@@ -1069,6 +1061,7 @@ const ImplementationGantt = () => {
                                 left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
                                 width: taskWidth,
                                 '--task-width': taskWidthVar,
+                                '--rollout-end': rolloutEndVar,
                                 backgroundColor: backgroundColor,
                                 height: '32px',
                                 color: (task.color === colors.secondary || task.color === colors.secondaryDark || 
