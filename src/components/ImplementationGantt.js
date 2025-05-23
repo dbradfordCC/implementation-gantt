@@ -40,6 +40,12 @@ const ImplementationGantt = () => {
 
   // Define product mixes and their modules
   const productMixes = {
+    'ClearRecruit (ATS Only)': {
+      name: 'ClearRecruit (ATS Only)',
+      modules: ['Recruiting'],
+      moduleCount: 1,
+      hasIntegration: true
+    },
     ClearRecruit: {
       name: 'ClearRecruit',
       modules: ['Recruiting', 'Onboarding'],
@@ -303,6 +309,9 @@ const ImplementationGantt = () => {
     // Check if Onboarding is included in the selected product
     const hasOnboarding = modules.includes('Onboarding');
     
+    // Check if this product has integration (for ClearRecruit ATS Only)
+    const hasIntegration = selectedProductInfo.hasIntegration;
+    
     // Get the service package
     const servicePackage = tierInfo.package;
     
@@ -371,6 +380,23 @@ const ImplementationGantt = () => {
             isSelfPaced: true,
             selfPacedLabel: 'Variable - Client Self-Paced'
           });
+          
+          // Add historical data import for Recruiting module only
+          if (moduleType === 'Recruiting') {
+            tasks.push({
+              id: 'historical-data-import',
+              name: 'Historical Data Import',
+              phase: 'Execution',
+              start: 0,
+              duration: 1, // Not relevant for self-paced
+              color: colors.secondaryAltLight, // Lighter purple
+              isSelfPaced: true,
+              selfPacedLabel: 'Variable - Client Self-Paced'
+            });
+            
+            // Add integration for ClearRecruit (ATS Only) - but NOT for ClearCare Pro
+            // (Integration is excluded from ClearCare Pro as per requirement)
+          }
         }
       }
       
@@ -517,6 +543,19 @@ const ImplementationGantt = () => {
           duration: dataImportDuration,
           color: colors.secondaryAltLight // Lighter purple
         });
+        
+        // Add integration for ClearRecruit (ATS Only) only
+        if (hasIntegration) {
+          const integrationStart = currentWeek + moduleDuration - integrationDuration;
+          tasks.push({
+            id: 'recruiting-integration',
+            name: 'Integration',
+            phase: 'Execution',
+            start: integrationStart,
+            duration: integrationDuration,
+            color: colors.primaryDark // Same color as Recruiting Implementation
+          });
+        }
       }
       
       // Add integration for Onboarding module only
@@ -677,7 +716,9 @@ const ImplementationGantt = () => {
     });
     
     return grouped;
-  }, [timeline]);return (
+  }, [timeline]);
+
+  return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, fontFamily: "'Open Sans', sans-serif", color: '#333333' }}>
       {/* Logo centered at the top */}
       <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', mb: 2 }}>
@@ -1063,3 +1104,4 @@ const ImplementationGantt = () => {
 };
 
 export default ImplementationGantt;
+            
