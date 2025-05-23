@@ -262,10 +262,10 @@ const ImplementationGantt = () => {
           max-width: 80% !important;
         }
         
-        /* Make launch phase bars more visible and maintain staircase positioning */
+        /* Make launch phase bars proportional to their duration */
         .launch-phase-task:not(.pro-tier-task) .task-bar {
-          width: calc(var(--task-width) * 1.4) !important;
-          max-width: calc(70% - 10px) !important;
+          width: var(--task-width) !important;
+          max-width: calc(80% - 20px) !important;
         }
         
         /* Position Go Live task to extend slightly beyond Rollout Training */
@@ -965,14 +965,12 @@ const ImplementationGantt = () => {
                       // Create a CSS variable to use for the task width in print mode
                       const taskWidthVar = task.isSelfPaced ? '80%' : 
                                           (totalWeeks > 0 ? 
-                                            task.phase === 'Launch' ? 
-                                              `${(task.duration / totalWeeks) * 150}%` : 
-                                              `${(task.duration / totalWeeks) * 75}%` 
+                                            `${(task.duration / totalWeeks) * 75}%` 
                                             : `${task.duration * 24}px`);
                       
                       // Calculate rollout training end position for Go Live positioning
                       const rolloutEndVar = task.name === 'Go Live' && task.phase === 'Launch' ? 
-                        `${((task.start - task.duration) / totalWeeks) * 75 + (task.duration / totalWeeks) * 150}%` : 
+                        `${((task.start - task.duration) / totalWeeks) * 75 + (task.duration / totalWeeks) * 75}%` : 
                         null;
                       
                       // Determine what text to display inside the bar
@@ -1073,8 +1071,7 @@ const ImplementationGantt = () => {
                                 '@media print': {
                                   width: `var(--task-width) !important`,
                                   left: `${task.start * (totalTaskWidth / totalWeeks)}px`,
-                                  maxWidth: task.phase === 'Launch' && !isProPackage ? 
-                                    'calc(70% - 10px)' : 'calc(80% - 20px)'
+                                  maxWidth: 'calc(80% - 20px)'
                                 }
                               }}
                             >
