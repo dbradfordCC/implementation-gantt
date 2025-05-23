@@ -725,10 +725,16 @@ const ImplementationGantt = () => {
   // Drag and drop handlers
   const handleMouseDown = useCallback((e, taskId, action) => {
     e.preventDefault();
+    e.stopPropagation();
+    
     const task = timelineState.find(t => t.id === taskId);
     
     // Don't allow dragging of self-paced tasks
     if (task && task.isSelfPaced) return;
+    
+    // Calculate the current total weeks for width calculations
+    const maxWeek = Math.max(...timelineState.map(t => t.start + t.duration));
+    const weekWidth = totalTaskWidth > 0 ? totalTaskWidth / maxWeek : 40; // fallback width
     
     dragState.current = {
       isDragging: true,
@@ -739,7 +745,8 @@ const ImplementationGantt = () => {
       startY: e.clientY,
       originalStart: task.start,
       originalDuration: task.duration,
-      originalOrder: taskOrder[taskId] || 0
+      originalOrder: taskOrder[taskId] || 0,
+      weekWidth: weekWidth
     };
     
     document.addEventListener('mousemove', handleMouseMove);
@@ -747,42 +754,43 @@ const ImplementationGantt = () => {
     
     // Add visual feedback
     document.body.style.cursor = action === 'resize' ? 'ew-resize' : 'grabbing';
-  }, [timelineState, taskOrder]);
+    
+    // Prevent text selection during drag
+    document.body.style.userSelect = 'none';
+  }, [timelineState, taskOrder, totalTaskWidth]);
 
   const handleMouseMove = useCallback((e) => {
     if (!dragState.current.isDragging) return;
     
-    const { taskId, dragType, startX, startY, originalStart, originalDuration } = dragState.current;
+    const { taskId, dragType, startX, startY, originalStart, originalDuration, weekWidth } = dragState.current;
     const deltaX = e.clientX - startX;
     const deltaY = e.clientY - startY;
     
     if (dragType === 'resize') {
-      // Handle resizing
-      const weekWidth = totalTaskWidth / Math.max(...timelineState.map(t => t.start + t.duration));
+      // Handle resizing - convert pixel movement to weeks
       const deltaWeeks = deltaX / weekWidth;
       const newDuration = Math.max(0.5, originalDuration + deltaWeeks); // Minimum 0.5 weeks
       
       setTimelineState(prevTimeline => {
         const updatedTimeline = prevTimeline.map(task => 
-          task.id === taskId ? { ...task, duration: newDuration } : task
+          task.id === taskId ? { ...task, duration: Math.round(newDuration * 10) / 10 } : task
         );
         return recalculateDependencies(updatedTimeline, taskId);
       });
     } else if (dragType === 'move') {
-      // Handle horizontal movement (time)
-      const weekWidth = totalTaskWidth / Math.max(...timelineState.map(t => t.start + t.duration));
+      // Handle horizontal movement (time) - convert pixel movement to weeks
       const deltaWeeks = deltaX / weekWidth;
       const newStart = Math.max(0, originalStart + deltaWeeks);
       
       setTimelineState(prevTimeline => {
         const updatedTimeline = prevTimeline.map(task => 
-          task.id === taskId ? { ...task, start: newStart } : task
+          task.id === taskId ? { ...task, start: Math.round(newStart * 10) / 10 } : task
         );
         return recalculateDependencies(updatedTimeline, taskId);
       });
       
       // Handle vertical movement (reordering within phase)
-      if (Math.abs(deltaY) > 20) { // Threshold for reordering
+      if (Math.abs(deltaY) > 40) { // Increased threshold for reordering
         const direction = deltaY > 0 ? 1 : -1;
         const newOrder = (dragState.current.originalOrder || 0) + direction;
         
@@ -792,7 +800,7 @@ const ImplementationGantt = () => {
         }));
       }
     }
-  }, [totalTaskWidth, timelineState, recalculateDependencies]);
+  }, [recalculateDependencies]);
 
   const handleMouseUp = useCallback(() => {
     if (dragState.current.isDragging) {
@@ -800,6 +808,7 @@ const ImplementationGantt = () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
+      document.body.style.userSelect = '';
     }
   }, [handleMouseMove]);
 
@@ -1311,18 +1320,27 @@ const ImplementationGantt = () => {
                                   }}
                                   sx={{
                                     position: 'absolute',
-                                    right: '-2px',
+                                    right: '-3px',
                                     top: 0,
                                     bottom: 0,
-                                    width: '8px',
-                                    backgroundColor: 'rgba(255,255,255,0.3)',
+                                    width: '10px',
+                                    backgroundColor: 'transparent',
                                     cursor: 'ew-resize',
                                     borderRadius: '0 4px 4px 0',
-                                    opacity: 0,
-                                    transition: 'opacity 0.2s',
+                                    zIndex: 10,
                                     '&:hover': {
-                                      opacity: 1,
-                                      backgroundColor: 'rgba(255,255,255,0.5)'
+                                      backgroundColor: 'rgba(255,255,255,0.3)'
+                                    },
+                                    '&::after': {
+                                      content: '""',
+                                      position: 'absolute',
+                                      right: '2px',
+                                      top: '50%',
+                                      transform: 'translateY(-50%)',
+                                      width: '3px',
+                                      height: '60%',
+                                      backgroundColor: 'rgba(255,255,255,0.6)',
+                                      borderRadius: '1px'
                                     }
                                   }}
                                 />
