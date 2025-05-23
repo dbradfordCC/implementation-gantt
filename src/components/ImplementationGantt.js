@@ -599,13 +599,19 @@ const ImplementationGantt = () => {
     e.stopPropagation();
     
     const task = timelineState.find(t => t.id === taskId);
+    console.log('Mouse down on task:', taskId, 'action:', action, 'task:', task);
     
     // Don't allow dragging of self-paced tasks
-    if (task && task.isSelfPaced) return;
+    if (task && task.isSelfPaced) {
+      console.log('Task is self-paced, not allowing drag');
+      return;
+    }
     
     // Calculate the current total weeks for width calculations
-    const maxWeek = Math.max(...timelineState.map(t => t.start + t.duration));
-    const weekWidth = totalTaskWidth > 0 ? totalTaskWidth / Math.max(maxWeek, 20) : 40; // Ensure minimum grid
+    const maxWeek = Math.max(...timelineState.map(t => t.start + t.duration), 20);
+    const weekWidth = totalTaskWidth > 0 ? totalTaskWidth / maxWeek : 40;
+    
+    console.log('Drag setup - maxWeek:', maxWeek, 'weekWidth:', weekWidth, 'totalTaskWidth:', totalTaskWidth);
     
     dragState.current = {
       isDragging: true,
@@ -623,61 +629,49 @@ const ImplementationGantt = () => {
     setIsDragging(true);
     setDragPhase(task.phase);
     
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-    
     // Add visual feedback
     document.body.style.cursor = action === 'resize' ? 'ew-resize' : 'grabbing';
     document.body.style.userSelect = 'none';
-  }, [timelineState, totalTaskWidth]);
-
-  const handleMouseMove = useCallback((e) => {
-    if (!dragState.current.isDragging) return;
     
-    const { taskId, dragType, startX, startY, originalStart, originalDuration, originalPhase, weekWidth } = dragState.current;
-    const deltaX = e.clientX - startX;
-    const deltaY = e.clientY - startY;
-    
-    if (dragType === 'resize') {
-      // Handle resizing - snap to whole weeks
-      const deltaWeeks = deltaX / weekWidth;
-      const newDuration = Math.max(1, snapToWeek(originalDuration + deltaWeeks)); // Minimum 1 week
+    // Add event listeners to document to ensure we catch all mouse events
+    const handleMouseMove = (e) => {
+      if (!dragState.current.isDragging) return;
       
-      setTimelineState(prevTimeline => 
-        prevTimeline.map(task => 
-          task.id === taskId ? { ...task, duration: newDuration } : task
-        )
-      );
-    } else if (dragType === 'move') {
-      // Handle horizontal movement - snap to whole weeks
-      const deltaWeeks = deltaX / weekWidth;
-      const newStart = Math.max(0, snapToWeek(originalStart + deltaWeeks));
+      const { taskId, dragType, startX, startY, originalStart, originalDuration, originalPhase, weekWidth } = dragState.current;
+      const deltaX = e.clientX - startX;
+      const deltaY = e.clientY - startY;
       
-      // Check if we're trying to move to a different phase
-      let targetPhase = originalPhase;
-      const currentY = e.clientY;
+      console.log('Mouse move - deltaX:', deltaX, 'deltaY:', deltaY, 'dragType:', dragType);
       
-      // Check phase boundaries
-      ['Initiation & Planning', 'Execution', 'Launch'].forEach(phase => {
-        const bounds = getPhaseY(phase);
-        if (bounds && currentY >= bounds.top && currentY <= bounds.bottom) {
-          targetPhase = phase;
-        }
-      });
-      
-      // Only allow movement within the same phase
-      if (targetPhase === originalPhase) {
+      if (dragType === 'resize') {
+        // Handle resizing - snap to whole weeks
+        const deltaWeeks = deltaX / weekWidth;
+        const newDuration = Math.max(1, Math.round(originalDuration + deltaWeeks));
+        
+        console.log('Resizing - deltaWeeks:', deltaWeeks, 'newDuration:', newDuration);
+        
+        setTimelineState(prevTimeline => 
+          prevTimeline.map(task => 
+            task.id === taskId ? { ...task, duration: newDuration } : task
+          )
+        );
+      } else if (dragType === 'move') {
+        // Handle horizontal movement - snap to whole weeks
+        const deltaWeeks = deltaX / weekWidth;
+        const newStart = Math.max(0, Math.round(originalStart + deltaWeeks));
+        
+        console.log('Moving - deltaWeeks:', deltaWeeks, 'newStart:', newStart);
+        
         setTimelineState(prevTimeline => 
           prevTimeline.map(task => 
             task.id === taskId ? { ...task, start: newStart } : task
           )
         );
       }
-    }
-  }, [snapToWeek, getPhaseY]);
-
-  const handleMouseUp = useCallback(() => {
-    if (dragState.current.isDragging) {
+    };
+    
+    const handleMouseUp = () => {
+      console.log('Mouse up - ending drag');
       dragState.current.isDragging = false;
       setIsDragging(false);
       setDragPhase(null);
@@ -685,8 +679,19 @@ const ImplementationGantt = () => {
       document.removeEventListener('mouseup', handleMouseUp);
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
-    }
-  }, [handleMouseMove]);
+    };
+    
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  }, [timelineState, totalTaskWidth]);
+
+  const handleMouseMove = useCallback((e) => {
+    // This function is now handled inline in handleMouseDown for better scope access
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    // This function is now handled inline in handleMouseDown for better scope access
+  }, []);
 
   // Function to handle PDF export
   const handleExportPDF = useCallback(() => {
@@ -972,7 +977,36 @@ const ImplementationGantt = () => {
               }
             }}
           >
-            {/* Week Grid Lines - only visible during dragging */}
+            {/* Permanent Week Grid Lines - very light grey, under phase headers */}
+            <Box 
+              className="permanent-grid"
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 260, // Start after task name column
+                right: 0,
+                bottom: 0,
+                pointerEvents: 'none',
+                zIndex: 2 // Under phase headers but above background
+              }}
+            >
+              {Array.from({ length: maxTimelineWeeks }, (_, i) => (
+                <Box
+                  key={i}
+                  sx={{
+                    position: 'absolute',
+                    left: `${(i / maxTimelineWeeks) * 100}%`,
+                    top: 0,
+                    bottom: 0,
+                    width: '1px',
+                    backgroundColor: i % 5 === 0 ? 'rgba(200, 200, 200, 0.4)' : 'rgba(200, 200, 200, 0.2)',
+                    borderLeft: i % 5 === 0 ? '1px solid rgba(200, 200, 200, 0.4)' : '1px solid rgba(200, 200, 200, 0.2)'
+                  }}
+                />
+              ))}
+            </Box>
+
+            {/* Week Grid Lines - only visible during dragging, darker */}
             {isDragging && (
               <Box 
                 className="drag-grid"
@@ -983,7 +1017,7 @@ const ImplementationGantt = () => {
                   right: 0,
                   bottom: 0,
                   pointerEvents: 'none',
-                  zIndex: 5
+                  zIndex: 15 // Above everything during drag
                 }}
               >
                 {Array.from({ length: maxTimelineWeeks }, (_, i) => (
@@ -995,8 +1029,8 @@ const ImplementationGantt = () => {
                       top: 0,
                       bottom: 0,
                       width: '1px',
-                      backgroundColor: 'rgba(37, 70, 119, 0.3)',
-                      borderLeft: i % 5 === 0 ? '2px solid rgba(37, 70, 119, 0.5)' : '1px solid rgba(37, 70, 119, 0.2)'
+                      backgroundColor: 'rgba(37, 70, 119, 0.4)',
+                      borderLeft: i % 5 === 0 ? '2px solid rgba(37, 70, 119, 0.6)' : '1px solid rgba(37, 70, 119, 0.3)'
                     }}
                   />
                 ))}
@@ -1062,7 +1096,7 @@ const ImplementationGantt = () => {
                         width: '100%',
                         height: '48px',
                         backgroundColor: colors.lightGray,
-                        zIndex: 1,
+                        zIndex: 10, // Above grid lines
                         '@media print': {
                           width: '100vw !important',
                           maxWidth: '100vw !important',
