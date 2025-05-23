@@ -262,16 +262,10 @@ const ImplementationGantt = () => {
           max-width: 80% !important;
         }
         
-        /* Make launch phase bars more visible and ensure proper positioning */
+        /* Make launch phase bars more visible and maintain staircase positioning */
         .launch-phase-task:not(.pro-tier-task) .task-bar {
           width: calc(var(--task-width) * 1.4) !important;
           max-width: calc(70% - 10px) !important;
-        }
-        
-        /* Ensure Go Live task positioning is consistent across all packages */
-        .launch-phase-task .task-bar {
-          left: auto !important;
-          position: relative !important;
         }
       }
     `;
@@ -1077,10 +1071,7 @@ const ImplementationGantt = () => {
                                 whiteSpace: 'nowrap',
                                 '@media print': {
                                   width: `var(--task-width) !important`,
-                                  left: task.phase === 'Launch' ? 
-                                    'auto !important' : 
-                                    `${task.start * (totalTaskWidth / totalWeeks)}px`,
-                                  position: task.phase === 'Launch' ? 'relative !important' : 'absolute',
+                                  left: `${task.start * (totalTaskWidth / totalWeeks)}px`,
                                   maxWidth: task.phase === 'Launch' && !isProPackage ? 
                                     'calc(70% - 10px)' : 'calc(80% - 20px)'
                                 }
