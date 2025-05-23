@@ -268,9 +268,9 @@ const ImplementationGantt = () => {
           max-width: calc(80% - 20px) !important;
         }
         
-        /* Position Go Live task to extend slightly beyond Rollout Training */
+        /* Position Go Live task immediately after Rollout Training */
         .launch-phase-task[data-task-name="Go Live"] .task-bar {
-          left: calc(var(--rollout-end) - 10px) !important;
+          left: `${task.start * (totalTaskWidth / totalWeeks)}px` !important;
           position: absolute !important;
         }
       }
@@ -968,11 +968,6 @@ const ImplementationGantt = () => {
                                             `${(task.duration / totalWeeks) * 75}%` 
                                             : `${task.duration * 24}px`);
                       
-                      // Calculate rollout training end position for Go Live positioning
-                      const rolloutEndVar = task.name === 'Go Live' && task.phase === 'Launch' ? 
-                        `${((task.start - task.duration) / totalWeeks) * 75 + (task.duration / totalWeeks) * 75}%` : 
-                        null;
-                      
                       // Determine what text to display inside the bar
                       const barText = task.isSelfPaced ? task.selfPacedLabel : 
                                      (task.duration >= 0.5 ? `${task.duration}w` : '');
@@ -1059,7 +1054,6 @@ const ImplementationGantt = () => {
                                 left: task.isSelfPaced ? 0 : `${task.start * (totalTaskWidth / totalWeeks)}px`,
                                 width: taskWidth,
                                 '--task-width': taskWidthVar,
-                                '--rollout-end': rolloutEndVar,
                                 backgroundColor: backgroundColor,
                                 height: '32px',
                                 color: (task.color === colors.secondary || task.color === colors.secondaryDark || 
